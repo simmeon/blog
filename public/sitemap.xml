@@ -2,35 +2,32 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>http://localhost:1313/blog/tags/coding/</loc>
-    <lastmod>2024-04-23T04:06:34+12:00</lastmod>
+    <loc>http://localhost:1313/blog/posts/rk45/rk45/</loc>
+    <lastmod>2024-04-28T07:08:00+12:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blog/tags/game/</loc>
-    <lastmod>2024-04-23T04:06:34+12:00</lastmod>
+    <loc>http://localhost:1313/blog/tags/numerical-integration/</loc>
+    <lastmod>2024-04-28T07:08:00+12:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blog/posts/guessing-game/</loc>
-    <lastmod>2024-04-23T04:06:34+12:00</lastmod>
+    <loc>http://localhost:1313/blog/tags/ode/</loc>
+    <lastmod>2024-04-28T07:08:00+12:00</lastmod>
   </url><url>
     <loc>http://localhost:1313/blog/posts/</loc>
-    <lastmod>2024-04-23T04:06:34+12:00</lastmod>
+    <lastmod>2024-04-28T07:08:00+12:00</lastmod>
   </url><url>
     <loc>http://localhost:1313/blog/tags/python/</loc>
-    <lastmod>2024-04-23T04:06:34+12:00</lastmod>
+    <lastmod>2024-04-28T07:08:00+12:00</lastmod>
+  </url><url>
+    <loc>http://localhost:1313/blog/tags/rk45/</loc>
+    <lastmod>2024-04-28T07:08:00+12:00</lastmod>
+  </url><url>
+    <loc>http://localhost:1313/blog/tags/runge-kutta/</loc>
+    <lastmod>2024-04-28T07:08:00+12:00</lastmod>
   </url><url>
     <loc>http://localhost:1313/blog/</loc>
-    <lastmod>2024-04-23T04:06:34+12:00</lastmod>
+    <lastmod>2024-04-28T07:08:00+12:00</lastmod>
   </url><url>
     <loc>http://localhost:1313/blog/tags/</loc>
-    <lastmod>2024-04-23T04:06:34+12:00</lastmod>
-  </url><url>
-    <loc>http://localhost:1313/blog/posts/dog/dog/</loc>
-    <lastmod>2024-04-23T03:50:09+12:00</lastmod>
-  </url><url>
-    <loc>http://localhost:1313/blog/tags/dogs/</loc>
-    <lastmod>2024-04-23T03:50:09+12:00</lastmod>
-  </url><url>
-    <loc>http://localhost:1313/blog/tags/pets/</loc>
-    <lastmod>2024-04-23T03:50:09+12:00</lastmod>
+    <lastmod>2024-04-28T07:08:00+12:00</lastmod>
   </url><url>
     <loc>http://localhost:1313/blog/archives/</loc>
   </url><url>

@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><script src="/blog/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=blog/livereload" data-no-instant defer></script><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>An Engineer&#39;s Guide to the Runge-Kutta (RK45) Method | simmeon&#39;s blog</title>
+<meta name="keywords" content="runge kutta, ode, numerical integration, rk45, python">
+<meta name="description" content="Understanding how to apply the RK45 method to engineering problems.">
+<meta name="author" content="simmeon">
+<link rel="canonical" href="https://simmeon.github.io/blog/post/rk45.md">
+<link crossorigin="anonymous" href="/blog/assets/css/stylesheet.4599eadb9eb2ad3d0a8d6827b41a8fda8f2f4af226b63466c09c5fddbc8706b7.css" integrity="sha256-RZnq256yrT0KjWgntBqP2o8vSvImtjRmwJxf3byHBrc=" rel="preload stylesheet" as="style">
+<link rel="icon" href="http://localhost:1313/blog/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="http://localhost:1313/blog/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="http://localhost:1313/blog/favicon-32x32.png">
+<link rel="apple-touch-icon" href="http://localhost:1313/blog/apple-touch-icon.png">
+<link rel="mask-icon" href="http://localhost:1313/blog/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="http://localhost:1313/blog/posts/rk45/rk45/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript><meta property="og:title" content="An Engineer&#39;s Guide to the Runge-Kutta (RK45) Method" />
+<meta property="og:description" content="Understanding how to apply the RK45 method to engineering problems." />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://localhost:1313/blog/posts/rk45/rk45/" />
+<meta property="og:image" content="http://localhost:1313/blog/images/papermod-cover.png" />
+<meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2024-04-28T07:08:00+12:00" />
+<meta property="article:modified_time" content="2024-04-28T07:08:00+12:00" />
+
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:image" content="http://localhost:1313/blog/images/papermod-cover.png" />
+<meta name="twitter:title" content="An Engineer&#39;s Guide to the Runge-Kutta (RK45) Method"/>
+<meta name="twitter:description" content="Understanding how to apply the RK45 method to engineering problems."/>
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Posts",
+      "item": "http://localhost:1313/blog/posts/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "An Engineer's Guide to the Runge-Kutta (RK45) Method",
+      "item": "http://localhost:1313/blog/posts/rk45/rk45/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "An Engineer's Guide to the Runge-Kutta (RK45) Method",
+  "name": "An Engineer\u0027s Guide to the Runge-Kutta (RK45) Method",
+  "description": "Understanding how to apply the RK45 method to engineering problems.",
+  "keywords": [
+    "runge kutta", "ode", "numerical integration", "rk45", "python"
+  ],
+  "articleBody": "\rThe Initial Value Problem In engineering, we often encounter systems that evolve over time, such as circuits, mechanical systems, or chemical reactions. These systems are best described using differential equations. For example, Newton’s law of cooling states:\n$$ \\dfrac{dT}{dt} = -k(T - T_{surr}) $$\nwhere T is the temperature of some point, k is a proportionality constant, and Tsurr is the temperature surrounding the point of interest.\nTo solve this equation is to find a solution for the temperature, T, over time. In this case, this is fairly straightforward and we can come up with an analytical solution of the form:\n$$ T(t) = T_{surr} + (T(0) - T_{surr})e^{-kt} $$\nNotice that the solution depends on the initial temperature, as Figure 1 shows. We need a point of reference to define the solution that is relevant to our system.\nFigure 1: Temperature of a point over time with different initial temperatures. Tsurr = 20 C, k = 1.\nFigure 1 code\r1''' 2Plotting the temperature of a point with different starting temperatures. 3 4Created by: simmeon 5Last Modified: 28/04/24 6License: MIT 7 8''' 9 10import matplotlib.pyplot as plt 11import numpy as np 12 13# Define system parameters 14T_surr = 20 # surrounding temperature of 20 C 15k = 1 # proportionality constant of 1 for simplicity 16 17# Define our cooling function 18def solve_T(t, T0): 19 return T_surr + (T0 - T_surr)*np.exp(-k*t) 20 21# Create an array of times from 0-5 seconds 22t = np.arange(0, 5, 0.1) 23 24# Solve and plot the solutions for different initial values of T 25T0_choices = [30, 25, 20, 15, 10] 26 27plt.style.use('https://github.com/dhaitz/matplotlib-stylesheets/raw/master/pitayasmoothie-dark.mplstyle') 28 29for T0 in T0_choices: 30 T = solve_T(t, T0) 31 plt.plot(t, T, label='T0 = {} C'.format(T0)) 32 33plt.title('Temperature over time', fontsize=20) 34plt.xlabel('Time [s]', fontsize=20) 35plt.ylabel('Temperature [C]', fontsize=20) 36plt.xlim(0, 5) 37plt.ylim(10, 30) 38plt.grid(alpha=0.7) 39plt.legend() 40plt.show() The initial value problem deals with solving these ordinary differential equations where we have an initial state of the system, eg. the initial temperature is 25 C. However, often these systems are hard or impossible to solve analytically. To solve them, we use numerical methods to approximate the solution. Let’s look at how we might be able to do that…\nNumerical Methods Let’s take the previous cooling equation,\n$$ \\dfrac{dT}{dt} = -k(T - T_{surr}) $$\nand assume we can’t find an analytical solution. Let’s consider the information we do have that could help us approximate the solution. We have an expression for the derivative that we can calculate at any time, t, assuming we know the current temperature at that time. We know the temperature at some initial time (t = 0 in this case), so we can calculate the derivative at that time. But how does this help us find the temperature at other times?\nThe Euler Method From calculus we know that we get the derivative of a function by taking two points on the function and approximating the derivative as if it were a striaght line. As the distance, h, between the two points gets closer to 0, the approximation gets better. Formally,\n$$ f^{\\prime}(x) = \\lim_{h \\rightarrow 0} \\frac{f(x+h) - f(x)}{h} $$\nWe can rearrange this and assume a finite step size, h, to get\n$$ f(x+h) \\approx f(x) + h f^{\\prime}(x) $$\nwhich gives us an expression to approximate the next step of a function using only the current known function value and the function derivative. We can see what this looks like with different step sizes in Figure 2.\nFigure 2: Estimating the value of y = x2 with different step sizes.\nFigure 2 code\r1''' 2Visualising how the derivative can be used to estimate the value of a function. 3 4Created by: simmeon 5Last Modified: 28/04/24 6License: MIT 7 8''' 9 10import matplotlib.pyplot as plt 11import numpy as np 12 13plt.style.use('https://github.com/dhaitz/matplotlib-stylesheets/raw/master/pitayasmoothie-dark.mplstyle') 14 15# Define some function we want to find the value of 16def func(t): 17 return t**2 18 19# Define the derivative line of the function 20def dydt(t, t0, y0): 21 m = 2 * t0 22 return m * (t-t0) + y0 23 24# Create an array of time values to plot the function 25t_func = np.arange(0.5, 2, 0.1) 26 27# Estimation parameters 28t0 = 1.0 # known initial value 29y0 = func(t0) # known initial value 30h = [1, 0.5, 0.2] # step size options 31 32# Plotting 33# Find and plot function values 34y_func = func(t_func) 35plt.plot(t_func, y_func) 36plt.plot(t0, y0, 'x', color='C0') 37 38# Plot the derivative line for each step size 39colours = ['C1', 'C2', 'C3'] 40for i in range(len(h)): 41 t_dydt = np.arange(t0, t0 + h[i], 0.1) 42 y_dydt = dydt(t_dydt, t0, y0) 43 plt.plot(t_dydt, y_dydt, color=colours[i], label='Step = {:.1f}'.format(h[i])) 44 plt.plot(t_dydt[-1], y_dydt[-1], 'o', color=colours[i]) 45 46# Show plot 47plt.title(\"Estimating a function by using the derivative\", fontsize=20) 48plt.legend(loc='lower right', fontsize=10) 49plt.show() This is Euler’s method for solving the initial value problem. We might also write it as:\n$$ f_{k+1} \\approx f_{k} + h f^{\\prime}(x_{k}) $$\nfor some index, k.\nWe can iterate through time with this method, using the newly found fk+1 as our new fk and so on. In code, that would look like the following:\n1def euler(dydt, y0, t0, t_end, h=0.1): 2 ''' 3 Takes the derivative function, an initial condition, 4 the time we want to integrate until, and a step size. 5 6 Returns arrays of time and y values. 7 ''' 8 t = np.arange(t0, t_end+h, h) 9 y = np.zeros(len(t)) 10 11 y[0] = y0 12 13 for i in range(1,len(t)): 14 y[i] = y[i-1] + h * dydt(y[i-1]) 15 16 return t, y The highlighted line shows the Euler method itself where the next value of the function is estimated.\nLet’s try do that with Newton’s cooling law and see how the result compares to the analytical solution. Figure 3 shows what that would look like.\nFigure 3: Analytical and Euler method solutions to Newton’s cooling law. Tsurr = 20 C, k = 1.\nFigure 3 code\r1''' 2Performing Euler integration to solve the cooling equation. We will compare with the analytical solution. 3 4Created by: simmeon 5Last Modified: 28/04/24 6License: MIT 7 8''' 9 10import matplotlib.pyplot as plt 11import numpy as np 12 13plt.style.use('https://github.com/dhaitz/matplotlib-stylesheets/raw/master/pitayasmoothie-dark.mplstyle') 14 15# Define system 16T_surr = 20 # surrounding temperature of 20 C 17k = 1 # proportionality constant of 1 for simplicity 18 19# Define our cooling function 20def solve_T(t, T0): 21 return T_surr + (T0 - T_surr)*np.exp(-k*t) 22 23# Define the derivative (only depends on the current temp, not time) 24def dTdt(T): 25 return -k * (T - T_surr) 26 27# Define our Euler integration function 28def euler(dTdt, T0, t0, t_end, h=0.1): 29 ''' 30 Takes the derivative function, an initial condition, the time we want to integrate until, 31 and a step size. 32 33 Returns arrays of time and temperature values 34 ''' 35 t = np.arange(t0, t_end+h, h) 36 T = np.zeros(len(t)) 37 38 T[0] = T0 39 40 for i in range(1,len(t)): 41 T[i] = T[i-1] + h * dTdt(T[i-1]) 42 43 return t, T 44 45 46# Parameters 47t0 = 0 48T0 = 30 49t_end = 5 50 51# Get analytical solution 52t_analytical = np.arange(t0, t_end+0.1, 0.1) 53T_analytical = solve_T(t_analytical, T0) 54 55# Get Euler numerical solution 56t_euler_05, T_euler_05 = euler(dTdt, T0, t0, t_end, 0.5) 57t_euler_01, T_euler_01 = euler(dTdt, T0, t0, t_end, 0.1) 58 59# Plotting 60plt.plot(t_analytical, T_analytical, label='Analytical', linestyle='--') 61plt.plot(t_euler_05, T_euler_05, label='Euler method, h = 0.5') 62plt.plot(t_euler_01, T_euler_01, label='Euler method, h = 0.1') 63 64plt.title(\"Analytical and Euler method solutions to Newton's cooling law\", fontsize=20) 65plt.xlabel('Time [s]', fontsize=20) 66plt.ylabel('Temperature [C]', fontsize=20) 67 68plt.legend(fontsize=15) 69plt.show() It is clear that the step size plays a big role in the accuracy of the solution. We could continue to reduce the step size, but that will quickly increase the time it takes to get a solution beyond a reasonable amount. Maybe we can think of a better way of doing this…\nRunge-Kutta Methods A major problem with Euler’s method is that using the derivative of the point we’re at is not very good at estimating the next value of the function (for the kind of step sizes we want to use). The derivative is constantly changing and could be vastly different at the new value. We might get a more accurate step if we use a mix of the derivative at our start point and end point.\nThis is the basis for how Runge-Kutta methods work. We find derivatives between the start and end points of each step and use a weighted average of those as the actual derivative for the step. The simplest version of this would be to just use the derivative at the start of the step – which is exactly the Euler method! The Euler method is a 1st order Runge-Kutta method.\nLet’s define the method more concretely.\nDerivation of Runge-Kutta Methods We will start by examining the initial problem again, being that we want to solve the following general equation for y:\n$$ \\dfrac{dy}{dt} = f(y, t) $$\nThis could be our cooling equation from before,\n$$ \\dfrac{dT}{dt} = -k(T - T_{surr}) $$\nor something more complex like a state space defining a spring, mass, damper system:\n$$ \\bold{\\dot{x}} = \\begin{bmatrix} 0 \u0026 1 \\\\ \\frac{-k}{m} \u0026 \\frac{-c}{m} \\end{bmatrix} \\bold{x} + \\begin{bmatrix} 0 \\\\ \\frac{1}{m} \\end{bmatrix} u(t) $$\nIn both cases, we are given the derivative of the state we want to solve for (eg. temperature) and the derivative depends on the value of the state and time. In the case of the cooling equation, the derivative only depends on the state, T, and not time.\nIdeally, we could just integrate the derivative to find the value at \\( t + h \\):\n$$ y(t+h) = y(t) + \\int_{\\tau=t}^{\\tau=t+h}{\\dfrac{dy(\\tau)}{d\\tau}} d\\tau $$\nHowever, as we said earlier, this is often hard or impossible. We can instead approximate the integral with a weighted sum.\nWeighted Sum Approximations Let’s build this up slowly. Take the following function, for example:\n$$ f(t) = t^3 - 2t^2 - t + 3 $$\nHow would we evaluate\n$$ \\int_0^2{f(t)}dt $$\nWe can do this analytically, which is like summing up tiny vertical slices of the function to find the total area underneath it. But we could think about this a different way. We can get that same area by finding the average value of the function over the interval, then multiplying by the length of the interval. You can see this in Figure 4.\nFigure 4: Comparison of areas found by integration and weighted sum approximation.\nFigure 4 code\r1''' 2Making sense of weighted sums as integral approximations. 3 4Created by: simmeon 5Last Modified: 28/04/24 6License: MIT 7 8''' 9 10import matplotlib.pyplot as plt 11import numpy as np 12 13plt.style.use('https://github.com/dhaitz/matplotlib-stylesheets/raw/master/pitayasmoothie-dark.mplstyle') 14 15def f(t): 16 return t**3 -2*t**2 - t + 3 17 18# Perform a weighted sum approximation 19N = 10 # higher number of samples, N, gives a better approximation 20sum = 0 21t0 = 0 22h = 2 23nodes = np.linspace(t0, t0+h, N) 24 25for node in nodes: 26 sum += f(node) 27weighted_sum = sum / N 28 29print('Weighted sum area: ', weighted_sum * h) 30 31# Plotting 32t = np.arange(t0, t0 + h, 0.01) 33y = f(t) 34 35# Integration result 36plt.subplot(1,2,1) 37plt.plot(t,y) 38plt.fill_between(t, y, alpha=0.3) 39plt.annotate('Area = 2.67', (1,2.5), fontsize=20) 40plt.title('Area from integration', fontsize=20) 41 42# Weighted sum result 43plt.subplot(1,2,2) 44plt.plot(t,y) 45plt.fill_between(t, weighted_sum, alpha=0.3) 46plt.annotate('Area = {:.2f}'.format(weighted_sum * h), (1,2.5), fontsize=20) 47plt.title('Area from weighted sum', fontsize=20) 48 49plt.show() To put this idea into an equation, we can say:\n$$ \\int_0^2{f(t)}dt \\approx \\frac{2}{\\sum{w_i}} \\sum_{i=1}^N{w_i f(t_i)} $$\nWhere \\( N \\) is the number of points we sample from the function to find the average, \\( w_i \\) is the weighting we give to each point, and \\( t_i \\) is some point inside the integration bounds of \\( [0, 2] \\). We can simplify this by giving every point a weighting of 1:\n$$ \\int_0^2{f(t)}dt \\approx \\frac{2}{N} \\sum_{i=1}^N{f(t_i)} $$\nThe more points we sample, the closer the average will be to the actual average of the function and therefore the actual integral.\nWe can extend this concept to our derivative from earlier:\n$$ \\int_{\\tau=t}^{\\tau=t+h}{\\dfrac{dy(\\tau)}{d\\tau}} d\\tau \\approx \\frac{h}{\\sum{w_i}} \\sum_{i=1}^N{w_i y^{\\prime}(t+v_i h, y(t+v_i h))} $$\nWhat a mess.\nWe’re still using the same concept of a weighted sum to find the average value of the derivative function, but since the derivative depends on \\( t \\) and \\( y \\) it’s a bit more complicated. We introduced \\( v_i \\) to help define which values of the function we sample, also called nodes. This can range from 0 to 1 to cover the interval from \\( t \\) to \\( t+h \\). Of course, whatever time we evaluate our derivative at must be the same time we use to get the \\( y \\) values for the derivative.\nFor the sake of simplicity let’s say that all our weights will sum up to 1. We are not, however, going to assume that all our weights will be the same value as we did previously.\nConsidering all this, the equation we are trying to solve is now:\n$$ y(t+h) = y(t) + h \\sum_{i=1}^N{w_i y^{\\prime}(t+v_i h, y(t+v_i h))} $$\nThe Runge-Kutta Family You might have noticed there is a problem with the sum we just defined. In particular, we don’t know what \\( y(t+v_i h) \\) is. In fact, finding this is basically the point of the whole method. So how do we deal with this?\nSimply, we are going to make worse approximations of \\( y(t+v_i h) \\) so that we can make a much better approximation of \\( y(t + h) \\). Again, these \\( y(t+v_i h) \\) values are used to find values of the derivative that we will then average. Let’s define what we will do to find these approximations.\nWe will start by saying that \\( v_1 = 0 \\). This means the first term in the sum will be\n$$ w_1 y^{\\prime}(t, y(t)) $$\nIf this was the only term in our sum (so \\( w_1 = 1 \\) ), then the equation we would be solving would be:\n$$ y(t+h) \\approx y(t) + h y^{\\prime}(t, y(t)) $$\nThis should look familiar, it’s the Euler method! This is what we mean by the Euler method is a 1st order Runge-Kutta method – because it uses one term in the weighted sum. Or in other words, it is a linear approximation.\nFor simplicity, we will write this first sum term as:\n$$ k_1 = y^{\\prime}(t, y(t)) h $$\n\\( k_1 \\) is a 1st order estimate of the change in \\( y \\) between \\( y(t) \\) and \\( y(t+h) \\).\nThe second term gets trickier as we have to somehow estimate \\( y(t+v_2 h) \\). Conveniently, we have just found an estimate for how \\( y \\) changes: \\( k_1 \\). So we can utilise some fraction of this change to create our estimate for the second weighted sum term where:\n$$ y^{\\prime}(t + \\alpha_2 h, y(t) + \\beta_{2,1} k_1) $$\nWe don’t know yet how much of \\( k_1 \\) we should add, we will figure that out later. Same with what time we should sample at.\nWe have changed notation slightly to help set up higher order Runge-Kutta methods. Instead of \\( v_i \\) we are now using \\( \\alpha_i \\) to tell us about what time we are sampling at. And since our \\( y \\) value is no longer defined in simple terms of time, we are going to use \\( \\beta_{i,j} \\) to describe how much of previous estimates we will add to the estimate for the new term.\nWe define\n$$ k_2 = y^{\\prime}(t + \\alpha_2 h, y(t) + \\beta_{2,1} k_1) h $$\nso that the equation we are solving is now:\n$$ y(t+h) \\approx y(t) + w_1 k_1 + w_2 k_2 $$\nWith that, we have defined the 2nd order Runge-Kutta Method!\nWe can continue the weighted sum with a third and fourth term, following similar logic of using the previous estimates to inform the new value of \\( y(t + v_i h) \\). This will give us:\n$$ k_3 = y^{\\prime}(t + \\alpha_3 h, y(t) + \\beta_{3,1} k_1 + \\beta_{3,2} k_2) h \\\\ k_4 = y^{\\prime}(t + \\alpha_4 h, y(t) + \\beta_{4,1} k_1 + \\beta_{4,2} k_2 + \\beta_{4,3} k_3) h $$\nThis gives the 4th order Runge-Kutta method:\n$$ y(t+h) \\approx y(t) + w_1 k_1 + w_2 k_2 + w_3 k_3 + w_4 k_4 $$\nNow to actually solve these higher order methods, we need to define these coefficients…\nDefining Coefficients We need to define all the \\( \\alpha_i \\), \\( \\beta_{i,j} \\), and \\( w_i \\) coefficients to be able to use these methods. We can do this by comparing the Taylor series expansion of our approximation to the Taylor series expansion of \\( y(t+h) \\) and equating coefficients. Let’s do this for the 2nd order method:\n$$ y(t+h) \\approx y(t) + w_1 k_1 + w_2 k_2 $$\nAs this is a 2nd order method, we will need to find the 2nd order expansions of the left and right sides.\nLet’s start with the left. The 2nd order Taylor series expansion of \\( y(t+h) \\) about \\( t \\) is:\n$$ y(t+h) \\approx y(t) + h \\dfrac{dy}{dt} \\Big| _{t,y} + \\frac{h^2}{2} \\dfrac{d^2y}{dt^2} \\Big| _{t,y} + O(h^3) $$\nWe can write our derivative:\n$$ \\dfrac{dy}{dt} = f(t, y) \\\\ {} \\\\ \\dfrac{d^2y}{dt^2} = \\dfrac{df(t,y)}{dt} = \\dfrac{\\partial f}{\\partial t} + \\dfrac{\\partial f}{\\partial y} \\dfrac{dy}{dt} = \\dfrac{\\partial f}{\\partial t} + f \\dfrac{\\partial f}{\\partial y} $$\nThis makes our left hand side (using slightly different notation):\n$$ y_{n+1} \\approx y_n + h f(t_n, y_n) + \\frac{h^2}{2} \\bigg(\\dfrac{\\partial f}{\\partial t} + f \\dfrac{\\partial f}{\\partial y}\\bigg) \\bigg|_{t_n, y_n} + O(h^3) $$\nGreat! Let’s do the right hand side now. We can write the right hand same with the same notation as above:\n$$ y_n + w_1 k_{1,n} + w_2 k_{2,n} $$\n\\( k_2 \\) is a bit tricky to expand. Our \\( k_2 \\) term is made up mostly of a function with the form \\( f(t + \\Delta t, y + \\Delta y) \\), which will need to be expanded. In general, the 2nd order expansion looks like:\n$$ f(t + \\Delta t, y + \\Delta y) = f(t, y) + \\Delta t \\dfrac{\\partial f}{\\partial t}\\bigg| _{t, y} + \\Delta y \\dfrac{\\partial f}{\\partial y} \\bigg| _{t, y} + O(h^3) $$\nApplying this to \\( k_2 \\) gives:\n$$ k_{2,n} = h f(t + \\alpha_2 h, y_n + \\beta_{2,1} k_1) \\approx h \\bigg( f(t_n, y_n) + \\alpha _2 h \\dfrac{\\partial f}{\\partial t} \\bigg| _{t_n, y_n} + \\beta _{2,1} k_1 \\dfrac{\\partial f}{\\partial y} \\bigg| _{t_n, y_n} \\bigg) $$\nAll together, the right hand side is then\n$$ y_n + w_1 k_{1,n} + w_2 k_{2,n} \\approx y_n + w_1 h f(t_n, y_n) + w_2 h \\bigg( f(t_n, y_n) + \\alpha _2 h \\dfrac{\\partial f}{\\partial t} \\bigg| _{t_n, y_n} + \\beta _{2,1} k_1 \\dfrac{\\partial f}{\\partial y} \\bigg| _{t_n, y_n} \\bigg) + O(h^3) $$\nwhich we can rearrange to be in the same form (substituting in for \\( k_1 \\)) as the left hand side:\n$$ y_n + w_1 k_{1,n} + w_2 k_{2,n} \\approx y_n + (w_1 + w_2) h f(t_n, y_n) + \\frac{h^2}{2} \\bigg(2 w_2 \\alpha_2 \\dfrac{\\partial f}{\\partial t} + 2 w_2 \\beta _{2,1} f \\dfrac{\\partial f}{\\partial y} \\bigg) \\bigg| _{t_n, y_n} + O(h^3) $$\nFinally, we have both expansions and can equate the coefficients:\n$$ y(t+h) \\approx y(t) + w_1 k_1 + w_2 k_2 \\\\ {} \\\\ \\big\\downarrow \\\\ {} \\\\ y_n + h f(t_n, y_n) + \\frac{h^2}{2} \\bigg(\\dfrac{\\partial f}{\\partial t} + f \\dfrac{\\partial f}{\\partial y}\\bigg) \\bigg|_{t_n, y_n} + O(h^3) \\\\ {} \\\\ = \\\\ {} \\\\ y_n + (w_1 + w_2) h f(t_n, y_n) + \\frac{h^2}{2} \\bigg(2 w_2 \\alpha_2 \\dfrac{\\partial f}{\\partial t} + 2 w_2 \\beta _{2,1} f \\dfrac{\\partial f}{\\partial y} \\bigg) \\bigg| _{t_n, y_n} + O(h^3) $$\nFrom this, we can see that our coefficients must satisfy the following equations:\n$$ w_1 + w_2 = 1 \\\\ {} \\\\ w_2 \\alpha_2= \\frac{1}{2} \\\\ {} \\\\ w_2 \\beta_{2,1} = \\frac{1}{2} $$\nWith 3 equations and 4 unknows, there are infinitely many solutions. However, the standard choices are:\n$$ \\alpha_2 = \\beta_{2,1} = 1 \\\\ {} \\\\ w_1 = w_2 = \\frac{1}{2} $$\nThis brings us finally to the complete 2nd order Runge-Kutta Method:\n$$ k_1 = h y^\\prime (t_n, y_n) \\\\ {} \\\\ k_2 = h y^\\prime (t_n + h, y_n + k_1) \\\\ {} \\\\ y_{n+1} = y_n + \\frac{1}{2} k_1 + \\frac{1}{2} k_2 $$\nA similar (messier) method of expansions can be used to for higher order methods. The standard terms for the 4th order Runge-Kutta method are:\n$$ k_1 = h y^\\prime (t_n, y_n) \\\\ {} \\\\ k_2 = h y^\\prime (t_n + \\frac{h}{2}, y_n + \\frac{k_1}{2}) \\\\ {} \\\\ k_3 = h y^\\prime (t_n + \\frac{h}{2}, y_n + \\frac{k_2}{2}) \\\\ {} \\\\ k_4 = h y^\\prime (t_n + h, y_n + k_3) \\\\ {} \\\\ y_{n+1} = y_n + \\frac{1}{6} (k_1 + 2 k_2 + 2 k_3 + k_4) $$\nKeep in mind that there are infinitely many choices of these coefficients and lots of research has gone into figuring out which ones work best. We will stick to these simple standard ones for now.\nImplementing Runge-Kutta Now that we have finally derived the Runge-Kutta methods, let’s implement them in code. We will do both the 2nd order and 4th order methods and compare their accuracy.\n1def rk2(dydt, t0, y0, t_end, h): 2 \"\"\" 3 Solves a first-order ODE using the 2nd order Runge-Kutta method 4 5 Args: 6 dydt: The derivative function to integrate 7 t0: Initial value of time 8 y0: Initial value of y 9 t_end: Final time for integration 10 h: Step size 11 12 Returns: 13 An array of y values for each time step 14 \"\"\" 15 t = np.arange(t0, t_end+h, h) # Array of time points 16 y = np.zeros_like(t) 17 y[0] = y0 18 19 for i in range(1, len(t)): 20 k1 = h * dydt(t[i - 1], y[i - 1]) 21 k2 = h * dydt(t[i - 1] + h, y[i - 1] + k1) 22 23 y[i] = y[i - 1] + (k1 + k2) / 2 24 25 return y We can see how, at each time step, we calculate the \\( k_i \\) values and use these to estimate the next value of the function.\n1def rk4(dydt, t0, y0, t_end, h): 2 \"\"\" 3 Solves a first-order ODE using the 4th order Runge-Kutta method 4 5 Args: 6 dydt: The derivative function to integrate 7 t0: Initial value of time 8 y0: Initial value of y 9 t_end: Final time for integration 10 h: Step size 11 12 Returns: 13 An array of y values for each time step 14 \"\"\" 15 t = np.arange(t0, t_end+h, h) 16 y = np.zeros_like(t) 17 y[0] = y0 18 19 for i in range(1, len(t)): 20 k1 = h * dydt(t[i - 1], y[i - 1]) 21 k2 = h * dydt(t[i - 1] + h / 2, y[i - 1] + k1 / 2) 22 k3 = h * dydt(t[i - 1] + h / 2, y[i - 1] + k2 / 2) 23 k4 = h * dydt(t[i], y[i - 1] + k3) 24 25 y[i] = y[i - 1] + (k1 + 2 * k2 + 2 * k3 + k4) / 6 26 27 return y After all that derivation, the actual method is remarkably clean and simple to implement. Figure 5 gives an idea of how these higher order functions perform compared to our original Euler method.\nFigure 5: Comparing the accuracy of different order ODE solvers, h = 0.1\nAll the solvers are using the same step size here. As we can see, the 4th order method is better than the 2nd order method. They are both much more accurate than the 1st order Euler method.\nAs a final comparison, let’s look at Newton’s law of cooling one last time. Figure 6 shows how our 4th order solver compares to our previous test with the Euler method.\nFigure 6: Comparing the accuracy of the RK4 and Euler methods on the cooling equation. Tsurr = 20 C, k = 1, h = 0.5\nFigure 5 and 6 code\r1''' 2Implementing and comparing the Runge-Kutta 2nd and 4th order methods. 3We can also compare to the Euler method (1st order). 4 5Created by: simmeon 6Last Modified: 29/04/24 7License: MIT 8 9''' 10 11import matplotlib.pyplot as plt 12import numpy as np 13 14plt.style.use('https://github.com/dhaitz/matplotlib-stylesheets/raw/master/pitayasmoothie-dark.mplstyle') 15 16# Define some functions to test our solvers with 17def dydt(t, y): 18 return 3 * t**2 + 20 * np.cos(10 * t) 19 20def analytical_solution(t): 21 return t**3 + 2 * np.sin(10 * t) # Analytical solution to the ODE 22 23# # Define our cooling function 24# def solve_T(t, T0): 25# return T_surr + (T0 - T_surr)*np.exp(-k*t) 26 27# # Define the derivative (only depends on the current temp, not time) 28# def dTdt(T): 29# return -k * (T - T_surr) 30 31def euler_solver(dydt, t0, y0, t_end, h): 32 \"\"\" 33 Solves a first-order ODE using the Euler method 34 35 Args: 36 dydt: The differential equation (dy/dt) as a Python function 37 t0: Initial value of time 38 y0: Initial value of y 39 t_end: Final time for integration 40 h: Step size 41 42 Returns: 43 An array of y values for each time step 44 \"\"\" 45 t = np.arange(t0, t_end+h, h) 46 y = np.zeros_like(t) 47 y[0] = y0 48 49 for i in range(1, len(t)): 50 y[i] = y[i - 1] + h * dydt(t[i - 1], y[i - 1]) 51 52 return y 53 54def rk2(dydt, t0, y0, t_end, h): 55 \"\"\" 56 Solves a first-order ODE using the 2nd order Runge-Kutta method 57 58 Args: 59 dydt: The derivative function to integrate 60 t0: Initial value of time 61 y0: Initial value of y 62 t_end: Final time for integration 63 h: Step size 64 65 Returns: 66 An array of y values for each time step 67 \"\"\" 68 t = np.arange(t0, t_end+h, h) # Array of time points 69 y = np.zeros_like(t) 70 y[0] = y0 71 72 for i in range(1, len(t)): 73 k1 = h * dydt(t[i - 1], y[i - 1]) 74 k2 = h * dydt(t[i - 1] + h, y[i - 1] + k1) 75 y[i] = y[i - 1] + (k1 + k2) / 2 76 77 return y 78 79def rk4(dydt, t0, y0, t_end, h): 80 \"\"\" 81 Solves a first-order ODE using the 4th order Runge-Kutta method 82 83 Args: 84 dydt: The derivative function to integrate 85 t0: Initial value of time 86 y0: Initial value of y 87 t_end: Final time for integration 88 h: Step size 89 90 Returns: 91 An array of y values for each time step 92 \"\"\" 93 t = np.arange(t0, t_end+h, h) 94 y = np.zeros_like(t) 95 y[0] = y0 96 97 for i in range(1, len(t)): 98 k1 = dydt(t[i - 1], y[i - 1]) 99 k2 = dydt(t[i - 1] + h / 2, y[i - 1] + k1 / 2) 100 k3 = dydt(t[i - 1] + h / 2, y[i - 1] + k2 / 2) 101 k4 = dydt(t[i], y[i - 1] + k3) 102 103 y[i] = y[i - 1] + (k1 + 2 * k2 + 2 * k3 + k4) / 6 * h 104 105 return y 106 107# Define simulation parameters 108t0 = 0 109y0 = 0 110t_end = 5 111h = 0.1 112 113# Solve using both methods 114y_euler = euler_solver(dydt, t0, y0, t_end, h) 115y_rk2 = rk2(dydt, t0, y0, t_end, h) 116y_rk4 = rk4(dydt, t0, y0, t_end, h) 117 118# Get analytical solution 119t = np.arange(t0, t_end+h, h) # Array of time points 120y_analytical = analytical_solution(t) 121 122# Calculate errors 123error_euler = np.abs(y_euler - y_analytical) 124error_rk2 = np.abs(y_rk2 - y_analytical) 125error_rk4 = np.abs(y_rk4 - y_analytical) 126 127# Plot the numerical solutions 128plt.subplot(1,2,1) 129plt.plot(t, y_euler, label='Euler') 130plt.plot(t, y_rk2, label='RK2') 131plt.plot(t, y_rk4, label='RK4') 132plt.plot(t, y_analytical, label='Analytical', linestyle='--') 133plt.xlabel('Time (t)', fontsize=20) 134plt.ylabel('y(t)', fontsize=20) 135plt.title('Numerical Solutions', fontsize=20) 136plt.legend(fontsize=15) 137 138# Plot the errors 139plt.subplot(1,2,2) 140plt.plot(t, error_euler, label='Euler') 141plt.plot(t, error_rk2, label='RK2') 142plt.plot(t, error_rk4, label='RK4') 143plt.xlabel('Time (t)', fontsize=20) 144plt.ylabel('Abs Error', fontsize=20) 145plt.title('Absolute Errors of the Numerical Solutions', fontsize=20) 146plt.legend(fontsize=15) 147 148plt.show() Even with a relatively large step size, the 4th order method is still much better than the Euler method. In fact, we could make the step size even bigger and still have a solution that fell within some tiny tolerance.\nBut how can we choose a good value to make this step size? And better yet, could we even possibly change the step size during our integration to make sure our result stayed within some tolerance?\nAdaptive Step Sizing …to be continued…\nReferences [1] The Runge-Kutta Equations by Quadrature Methods. Roson J. S., 1967, NASA.\n[2] Runge-Kutta Methods. 10.001: Numerical Solution of Ordinary Differential Equations, MIT\n[3] Explanation and proof of the 4th order Runge-Kutta method\n",
+  "wordCount" : "4839",
+  "inLanguage": "en",
+  "image": "http://localhost:1313/blog/images/papermod-cover.png","datePublished": "2024-04-28T07:08:00+12:00",
+  "dateModified": "2024-04-28T07:08:00+12:00",
+  "author":{
+    "@type": "Person",
+    "name": "simmeon"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "http://localhost:1313/blog/posts/rk45/rk45/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "simmeon's blog",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "http://localhost:1313/blog/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="http://localhost:1313/blog/" accesskey="h" title="simmeon&#39;s blog (Alt + H)">simmeon&#39;s blog</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="http://localhost:1313/blog/archives/" title="Archive">
+                    <span>Archive</span>
+                </a>
+            </li>
+            <li>
+                <a href="http://localhost:1313/blog/search/" title="Search (Alt &#43; /)" accesskey=/>
+                    <span>Search</span>
+                </a>
+            </li>
+            <li>
+                <a href="http://localhost:1313/blog/tags/" title="Tags">
+                    <span>Tags</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    <div class="breadcrumbs"><a href="http://localhost:1313/blog/">Home</a>&nbsp;»&nbsp;<a href="http://localhost:1313/blog/posts/">Posts</a></div>
+    <h1 class="post-title entry-hint-parent">
+      An Engineer&#39;s Guide to the Runge-Kutta (RK45) Method
+    </h1>
+    <div class="post-description">
+      Understanding how to apply the RK45 method to engineering problems.
+    </div>
+    <div class="post-meta"><span title='2024-04-28 07:08:00 +1200 NZST'>April 28, 2024</span>&nbsp;·&nbsp;23 min&nbsp;·&nbsp;4839 words&nbsp;·&nbsp;simmeon&nbsp;|&nbsp;<a href="https://github.com/simmeon/blog/content/posts/rk45/posts/rk45/rk45.md" rel="noopener noreferrer" target="_blank">Suggest Changes</a>
+
+</div>
+  </header> <div class="toc">
+    <details >
+        <summary accesskey="c" title="(Alt + C)">
+            <span class="details">Table of Contents</span>
+        </summary>
+
+        <div class="inner"><ul>
+                <li>
+                    <a href="#the-initial-value-problem" aria-label="The Initial Value Problem">The Initial Value Problem</a></li>
+                <li>
+                    <a href="#numerical-methods" aria-label="Numerical Methods">Numerical Methods</a><ul>
+                        
+                <li>
+                    <a href="#the-euler-method" aria-label="The Euler Method">The Euler Method</a></li>
+                <li>
+                    <a href="#runge-kutta-methods" aria-label="Runge-Kutta Methods">Runge-Kutta Methods</a><ul>
+                        
+                <li>
+                    <a href="#derivation-of-runge-kutta-methods" aria-label="Derivation of Runge-Kutta Methods">Derivation of Runge-Kutta Methods</a><ul>
+                        
+                <li>
+                    <a href="#weighted-sum-approximations" aria-label="Weighted Sum Approximations">Weighted Sum Approximations</a></li>
+                <li>
+                    <a href="#the-runge-kutta-family" aria-label="The Runge-Kutta Family">The Runge-Kutta Family</a></li>
+                <li>
+                    <a href="#defining-coefficients" aria-label="Defining Coefficients">Defining Coefficients</a></li></ul>
+                </li>
+                <li>
+                    <a href="#implementing-runge-kutta" aria-label="Implementing Runge-Kutta">Implementing Runge-Kutta</a></li></ul>
+                </li></ul>
+                </li>
+                <li>
+                    <a href="#adaptive-step-sizing" aria-label="Adaptive Step Sizing">Adaptive Step Sizing</a></li>
+                <li>
+                    <a href="#references" aria-label="References">References</a>
+                </li>
+            </ul>
+        </div>
+    </details>
+</div>
+
+  <div class="post-content">
+
+
+<!-- KaTeX -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.css" integrity="sha384-zB1R0rpPzHqg7Kpt0Aljp8JPLqbXI3bhnPWROx27a9N0Ll6ZP/+DiW/UqRcLbRjq" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/katex.min.js" integrity="sha384-y23I5Q6l+B6vatafAwxRu/0oK/79VlbSz7Q9aiSZUvyWYIYsd+qj+o24G5ZU2zJz" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.11.1/dist/contrib/auto-render.min.js" integrity="sha384-kWPLUVMOks5AQFrykwIup5lo0m3iMkkHrD0uJ4H5cjeGihAutqP0yW0J6dpFiVkI" crossorigin="anonymous" onload="renderMathInElement(document.body);"></script>
+
+
+<h2 id="the-initial-value-problem">The Initial Value Problem<a hidden class="anchor" aria-hidden="true" href="#the-initial-value-problem">#</a></h2>
+<p>In engineering, we often encounter systems that evolve over time, such as circuits, mechanical systems, or chemical reactions. These systems are best described using differential equations.
+For example, Newton&rsquo;s law of cooling states:</p>
+<p>$$
+\dfrac{dT}{dt} = -k(T - T_{surr})
+$$</p>
+<p>where <strong>T</strong> is the temperature of some point, <strong>k</strong> is a proportionality constant, and <strong>T<sub>surr<sub></strong> is the temperature surrounding the point of interest.</p>
+<p>To solve this equation is to find a solution for the temperature, <strong>T</strong>, over time. In this case, this is fairly straightforward and we can come up with an analytical solution of the form:</p>
+<p>$$
+T(t) = T_{surr} + (T(0) - T_{surr})e^{-kt}
+$$</p>
+<p>Notice that the solution <em><strong>depends on the initial temperature</strong></em>, as <strong>Figure 1</strong> shows. We need a point of reference to define the solution that is relevant to our system.</p>
+<figure class="align-center ">
+    <img loading="lazy" src="../img/heat-transfer.png#center"
+         alt="Figure 1: Temperature of a point over time with different initial temperatures. Tsurr = 20 C, k = 1."/> <figcaption>
+            <p><strong>Figure 1</strong>: Temperature of a point over time with different initial temperatures. T<sub>surr</sub> = 20 C, k = 1.</p>
+        </figcaption>
+</figure>
+
+
+
+<p><details >
+  <summary markdown="span">Figure 1 code</summary>
+  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="ln"> 1</span><span class="cl"><span class="s1">&#39;&#39;&#39;
+</span></span></span><span class="line"><span class="ln"> 2</span><span class="cl"><span class="s1">Plotting the temperature of a point with different starting temperatures.
+</span></span></span><span class="line"><span class="ln"> 3</span><span class="cl"><span class="s1">
+</span></span></span><span class="line"><span class="ln"> 4</span><span class="cl"><span class="s1">Created by: simmeon
+</span></span></span><span class="line"><span class="ln"> 5</span><span class="cl"><span class="s1">Last Modified: 28/04/24
+</span></span></span><span class="line"><span class="ln"> 6</span><span class="cl"><span class="s1">License: MIT
+</span></span></span><span class="line"><span class="ln"> 7</span><span class="cl"><span class="s1">
+</span></span></span><span class="line"><span class="ln"> 8</span><span class="cl"><span class="s1">&#39;&#39;&#39;</span>
+</span></span><span class="line"><span class="ln"> 9</span><span class="cl">
+</span></span><span class="line"><span class="ln">10</span><span class="cl"><span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+</span></span><span class="line"><span class="ln">11</span><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="ln">12</span><span class="cl">
+</span></span><span class="line"><span class="ln">13</span><span class="cl"><span class="c1"># Define system parameters</span>
+</span></span><span class="line"><span class="ln">14</span><span class="cl"><span class="n">T_surr</span> <span class="o">=</span> <span class="mi">20</span>     <span class="c1"># surrounding temperature of 20 C</span>
+</span></span><span class="line"><span class="ln">15</span><span class="cl"><span class="n">k</span> <span class="o">=</span> <span class="mi">1</span>           <span class="c1"># proportionality constant of 1 for simplicity</span>
+</span></span><span class="line"><span class="ln">16</span><span class="cl">
+</span></span><span class="line"><span class="ln">17</span><span class="cl"><span class="c1"># Define our cooling function</span>
+</span></span><span class="line"><span class="ln">18</span><span class="cl"><span class="k">def</span> <span class="nf">solve_T</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">T0</span><span class="p">):</span>
+</span></span><span class="line"><span class="ln">19</span><span class="cl">    <span class="k">return</span> <span class="n">T_surr</span> <span class="o">+</span> <span class="p">(</span><span class="n">T0</span> <span class="o">-</span> <span class="n">T_surr</span><span class="p">)</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">k</span><span class="o">*</span><span class="n">t</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">20</span><span class="cl">
+</span></span><span class="line"><span class="ln">21</span><span class="cl"><span class="c1"># Create an array of times from 0-5 seconds</span>
+</span></span><span class="line"><span class="ln">22</span><span class="cl"><span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">23</span><span class="cl">
+</span></span><span class="line"><span class="ln">24</span><span class="cl"><span class="c1"># Solve and plot the solutions for different initial values of T</span>
+</span></span><span class="line"><span class="ln">25</span><span class="cl"><span class="n">T0_choices</span> <span class="o">=</span> <span class="p">[</span><span class="mi">30</span><span class="p">,</span> <span class="mi">25</span><span class="p">,</span> <span class="mi">20</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">10</span><span class="p">]</span>
+</span></span><span class="line"><span class="ln">26</span><span class="cl">
+</span></span><span class="line"><span class="ln">27</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">style</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="s1">&#39;https://github.com/dhaitz/matplotlib-stylesheets/raw/master/pitayasmoothie-dark.mplstyle&#39;</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">28</span><span class="cl">
+</span></span><span class="line"><span class="ln">29</span><span class="cl"><span class="k">for</span> <span class="n">T0</span> <span class="ow">in</span> <span class="n">T0_choices</span><span class="p">:</span>
+</span></span><span class="line"><span class="ln">30</span><span class="cl">    <span class="n">T</span> <span class="o">=</span> <span class="n">solve_T</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">T0</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">31</span><span class="cl">    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">T</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;T0 = </span><span class="si">{}</span><span class="s1"> C&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">T0</span><span class="p">))</span>
+</span></span><span class="line"><span class="ln">32</span><span class="cl">
+</span></span><span class="line"><span class="ln">33</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Temperature over time&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">34</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Time [s]&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">35</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Temperature [C]&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">36</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">5</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">37</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">ylim</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">30</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">38</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">39</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+</span></span><span class="line"><span class="ln">40</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</span></span></code></pre></div>
+</details></p>
+
+<p>The initial value problem deals with solving these ordinary differential equations where we have an initial state of the system, eg. the initial temperature is 25 C. However, often these systems are hard or impossible to solve analytically. To solve them, we use numerical methods to approximate the solution. Let&rsquo;s look at how we might be able to do that&hellip;</p>
+<h2 id="numerical-methods">Numerical Methods<a hidden class="anchor" aria-hidden="true" href="#numerical-methods">#</a></h2>
+<p>Let&rsquo;s take the previous cooling equation,</p>
+<p>$$
+\dfrac{dT}{dt} = -k(T - T_{surr})
+$$</p>
+<p>and assume we can&rsquo;t find an analytical solution. Let&rsquo;s consider the information we <em>do</em> have that could help us approximate the solution. We have an expression for the derivative that we can calculate at any time, <em><strong>t</strong></em>, assuming we know the current temperature at that time. We know the temperature at some initial time (<em><strong>t</strong></em> = 0 in this case), so we can calculate the derivative at that time. But how does this help us find the temperature at other times?</p>
+<h3 id="the-euler-method">The Euler Method<a hidden class="anchor" aria-hidden="true" href="#the-euler-method">#</a></h3>
+<p>From calculus we know that we get the derivative of a function by taking two points on the function and approximating the derivative as if it were a striaght line. As the distance, <em><strong>h</strong></em>, between the two points gets closer to 0, the approximation gets better. Formally,</p>
+<p>$$
+f^{\prime}(x) = \lim_{h \rightarrow 0} \frac{f(x+h) - f(x)}{h}
+$$</p>
+<p>We can rearrange this and assume a finite step size, <em><strong>h</strong></em>, to get</p>
+<p>$$
+f(x+h) \approx f(x) + h f^{\prime}(x)
+$$</p>
+<p>which gives us an expression to approximate the next step of a function using only the current known function value and the function derivative. We can see what this looks like with different step sizes in <strong>Figure 2</strong>.</p>
+<figure class="align-center ">
+     <img loading="lazy" src="../img/the_derivative.png#center"
+          alt="Figure 2: Estimating the value of y = x2 with different step sizes."/> <figcaption>
+             <p><strong>Figure 2</strong>: Estimating the value of y = x<sup>2</sup> with different step sizes.</p>
+         </figcaption>
+ </figure>
+
+
+
+<p><details >
+  <summary markdown="span">Figure 2 code</summary>
+  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="ln"> 1</span><span class="cl"><span class="s1">&#39;&#39;&#39;
+</span></span></span><span class="line"><span class="ln"> 2</span><span class="cl"><span class="s1">Visualising how the derivative can be used to estimate the value of a function.
+</span></span></span><span class="line"><span class="ln"> 3</span><span class="cl"><span class="s1">
+</span></span></span><span class="line"><span class="ln"> 4</span><span class="cl"><span class="s1">Created by: simmeon
+</span></span></span><span class="line"><span class="ln"> 5</span><span class="cl"><span class="s1">Last Modified: 28/04/24
+</span></span></span><span class="line"><span class="ln"> 6</span><span class="cl"><span class="s1">License: MIT
+</span></span></span><span class="line"><span class="ln"> 7</span><span class="cl"><span class="s1">
+</span></span></span><span class="line"><span class="ln"> 8</span><span class="cl"><span class="s1">&#39;&#39;&#39;</span>
+</span></span><span class="line"><span class="ln"> 9</span><span class="cl">
+</span></span><span class="line"><span class="ln">10</span><span class="cl"><span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+</span></span><span class="line"><span class="ln">11</span><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="ln">12</span><span class="cl">
+</span></span><span class="line"><span class="ln">13</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">style</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="s1">&#39;https://github.com/dhaitz/matplotlib-stylesheets/raw/master/pitayasmoothie-dark.mplstyle&#39;</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">14</span><span class="cl">
+</span></span><span class="line"><span class="ln">15</span><span class="cl"><span class="c1"># Define some function we want to find the value of</span>
+</span></span><span class="line"><span class="ln">16</span><span class="cl"><span class="k">def</span> <span class="nf">func</span><span class="p">(</span><span class="n">t</span><span class="p">):</span>
+</span></span><span class="line"><span class="ln">17</span><span class="cl">    <span class="k">return</span> <span class="n">t</span><span class="o">**</span><span class="mi">2</span>
+</span></span><span class="line"><span class="ln">18</span><span class="cl">
+</span></span><span class="line"><span class="ln">19</span><span class="cl"><span class="c1"># Define the derivative line of the function</span>
+</span></span><span class="line"><span class="ln">20</span><span class="cl"><span class="k">def</span> <span class="nf">dydt</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">t0</span><span class="p">,</span> <span class="n">y0</span><span class="p">):</span>
+</span></span><span class="line"><span class="ln">21</span><span class="cl">    <span class="n">m</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">t0</span>
+</span></span><span class="line"><span class="ln">22</span><span class="cl">    <span class="k">return</span> <span class="n">m</span> <span class="o">*</span> <span class="p">(</span><span class="n">t</span><span class="o">-</span><span class="n">t0</span><span class="p">)</span> <span class="o">+</span> <span class="n">y0</span>
+</span></span><span class="line"><span class="ln">23</span><span class="cl">
+</span></span><span class="line"><span class="ln">24</span><span class="cl"><span class="c1"># Create an array of time values to plot the function</span>
+</span></span><span class="line"><span class="ln">25</span><span class="cl"><span class="n">t_func</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">26</span><span class="cl">
+</span></span><span class="line"><span class="ln">27</span><span class="cl"><span class="c1"># Estimation parameters</span>
+</span></span><span class="line"><span class="ln">28</span><span class="cl"><span class="n">t0</span> <span class="o">=</span> <span class="mf">1.0</span>                    <span class="c1"># known initial value</span>
+</span></span><span class="line"><span class="ln">29</span><span class="cl"><span class="n">y0</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="n">t0</span><span class="p">)</span>               <span class="c1"># known initial value</span>
+</span></span><span class="line"><span class="ln">30</span><span class="cl"><span class="n">h</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">]</span>           <span class="c1"># step size options</span>
+</span></span><span class="line"><span class="ln">31</span><span class="cl">
+</span></span><span class="line"><span class="ln">32</span><span class="cl"><span class="c1"># Plotting</span>
+</span></span><span class="line"><span class="ln">33</span><span class="cl"><span class="c1"># Find and plot function values</span>
+</span></span><span class="line"><span class="ln">34</span><span class="cl"><span class="n">y_func</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="n">t_func</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">35</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">t_func</span><span class="p">,</span> <span class="n">y_func</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">36</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">t0</span><span class="p">,</span> <span class="n">y0</span><span class="p">,</span> <span class="s1">&#39;x&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;C0&#39;</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">37</span><span class="cl">
+</span></span><span class="line"><span class="ln">38</span><span class="cl"><span class="c1"># Plot the derivative line for each step size</span>
+</span></span><span class="line"><span class="ln">39</span><span class="cl"><span class="n">colours</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;C1&#39;</span><span class="p">,</span> <span class="s1">&#39;C2&#39;</span><span class="p">,</span> <span class="s1">&#39;C3&#39;</span><span class="p">]</span>
+</span></span><span class="line"><span class="ln">40</span><span class="cl"><span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">h</span><span class="p">)):</span>
+</span></span><span class="line"><span class="ln">41</span><span class="cl">    <span class="n">t_dydt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">t0</span><span class="p">,</span> <span class="n">t0</span> <span class="o">+</span> <span class="n">h</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="mf">0.1</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">42</span><span class="cl">    <span class="n">y_dydt</span> <span class="o">=</span> <span class="n">dydt</span><span class="p">(</span><span class="n">t_dydt</span><span class="p">,</span> <span class="n">t0</span><span class="p">,</span> <span class="n">y0</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">43</span><span class="cl">    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">t_dydt</span><span class="p">,</span> <span class="n">y_dydt</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">colours</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Step = </span><span class="si">{:.1f}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">h</span><span class="p">[</span><span class="n">i</span><span class="p">]))</span>
+</span></span><span class="line"><span class="ln">44</span><span class="cl">    <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">t_dydt</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">y_dydt</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="s1">&#39;o&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">colours</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+</span></span><span class="line"><span class="ln">45</span><span class="cl">
+</span></span><span class="line"><span class="ln">46</span><span class="cl"><span class="c1"># Show plot</span>
+</span></span><span class="line"><span class="ln">47</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&#34;Estimating a function by using the derivative&#34;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">48</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s1">&#39;lower right&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">49</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</span></span></code></pre></div>
+</details></p>
+
+<p>This is Euler&rsquo;s method for solving the initial value problem. We might also write it as:</p>
+<p>$$
+f_{k+1} \approx f_{k} + h f^{\prime}(x_{k})
+$$</p>
+<p>for some index, <em><strong>k</strong></em>.</p>
+<p>We can iterate through time with this method, using the newly found <em>f<sub>k+1</sub></em> as our new <em>f<sub>k</sub></em> and so on. In code, that would look like the following:</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="ln"> 1</span><span class="cl"><span class="k">def</span> <span class="nf">euler</span><span class="p">(</span><span class="n">dydt</span><span class="p">,</span> <span class="n">y0</span><span class="p">,</span> <span class="n">t0</span><span class="p">,</span> <span class="n">t_end</span><span class="p">,</span> <span class="n">h</span><span class="o">=</span><span class="mf">0.1</span><span class="p">):</span>
+</span></span><span class="line"><span class="ln"> 2</span><span class="cl">    <span class="s1">&#39;&#39;&#39;
+</span></span></span><span class="line"><span class="ln"> 3</span><span class="cl"><span class="s1">    Takes the derivative function, an initial condition, 
+</span></span></span><span class="line"><span class="ln"> 4</span><span class="cl"><span class="s1">    the time we want to integrate until, and a step size.
+</span></span></span><span class="line"><span class="ln"> 5</span><span class="cl"><span class="s1">
+</span></span></span><span class="line"><span class="ln"> 6</span><span class="cl"><span class="s1">    Returns arrays of time and y values.
+</span></span></span><span class="line"><span class="ln"> 7</span><span class="cl"><span class="s1">    &#39;&#39;&#39;</span>
+</span></span><span class="line"><span class="ln"> 8</span><span class="cl">    <span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">t0</span><span class="p">,</span> <span class="n">t_end</span><span class="o">+</span><span class="n">h</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln"> 9</span><span class="cl">    <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">t</span><span class="p">))</span>
+</span></span><span class="line"><span class="ln">10</span><span class="cl">
+</span></span><span class="line"><span class="ln">11</span><span class="cl">    <span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">y0</span>
+</span></span><span class="line"><span class="ln">12</span><span class="cl">
+</span></span><span class="line"><span class="ln">13</span><span class="cl">    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">t</span><span class="p">)):</span>
+</span></span><span class="line hl"><span class="ln">14</span><span class="cl">        <span class="n">y</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">y</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">h</span> <span class="o">*</span> <span class="n">dydt</span><span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+</span></span><span class="line"><span class="ln">15</span><span class="cl">
+</span></span><span class="line"><span class="ln">16</span><span class="cl">    <span class="k">return</span> <span class="n">t</span><span class="p">,</span> <span class="n">y</span>
+</span></span></code></pre></div><p>The highlighted line shows the Euler method itself where the next value of the function is estimated.</p>
+<p>Let&rsquo;s try do that with Newton&rsquo;s cooling law and see how the result compares to the analytical solution. <strong>Figure 3</strong> shows what that would look like.</p>
+<figure class="align-center ">
+    <img loading="lazy" src="../img/euler_method.png#center"
+         alt="Figure 3: Analytical and Euler method solutions to Newton&amp;rsquo;s cooling law. Tsurr = 20 C, k = 1."/> <figcaption>
+            <p><strong>Figure 3</strong>: Analytical and Euler method solutions to Newton&rsquo;s cooling law. T<sub>surr</sub> = 20 C, k = 1.</p>
+        </figcaption>
+</figure>
+
+
+
+<p><details >
+  <summary markdown="span">Figure 3 code</summary>
+  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="ln"> 1</span><span class="cl"><span class="s1">&#39;&#39;&#39;
+</span></span></span><span class="line"><span class="ln"> 2</span><span class="cl"><span class="s1">Performing Euler integration to solve the cooling equation. We will compare with the analytical solution.
+</span></span></span><span class="line"><span class="ln"> 3</span><span class="cl"><span class="s1">
+</span></span></span><span class="line"><span class="ln"> 4</span><span class="cl"><span class="s1">Created by: simmeon
+</span></span></span><span class="line"><span class="ln"> 5</span><span class="cl"><span class="s1">Last Modified: 28/04/24
+</span></span></span><span class="line"><span class="ln"> 6</span><span class="cl"><span class="s1">License: MIT
+</span></span></span><span class="line"><span class="ln"> 7</span><span class="cl"><span class="s1">
+</span></span></span><span class="line"><span class="ln"> 8</span><span class="cl"><span class="s1">&#39;&#39;&#39;</span>
+</span></span><span class="line"><span class="ln"> 9</span><span class="cl">
+</span></span><span class="line"><span class="ln">10</span><span class="cl"><span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+</span></span><span class="line"><span class="ln">11</span><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="ln">12</span><span class="cl">
+</span></span><span class="line"><span class="ln">13</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">style</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="s1">&#39;https://github.com/dhaitz/matplotlib-stylesheets/raw/master/pitayasmoothie-dark.mplstyle&#39;</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">14</span><span class="cl">
+</span></span><span class="line"><span class="ln">15</span><span class="cl"><span class="c1"># Define system</span>
+</span></span><span class="line"><span class="ln">16</span><span class="cl"><span class="n">T_surr</span> <span class="o">=</span> <span class="mi">20</span>     <span class="c1"># surrounding temperature of 20 C</span>
+</span></span><span class="line"><span class="ln">17</span><span class="cl"><span class="n">k</span> <span class="o">=</span> <span class="mi">1</span>           <span class="c1"># proportionality constant of 1 for simplicity</span>
+</span></span><span class="line"><span class="ln">18</span><span class="cl">
+</span></span><span class="line"><span class="ln">19</span><span class="cl"><span class="c1"># Define our cooling function</span>
+</span></span><span class="line"><span class="ln">20</span><span class="cl"><span class="k">def</span> <span class="nf">solve_T</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">T0</span><span class="p">):</span>
+</span></span><span class="line"><span class="ln">21</span><span class="cl">    <span class="k">return</span> <span class="n">T_surr</span> <span class="o">+</span> <span class="p">(</span><span class="n">T0</span> <span class="o">-</span> <span class="n">T_surr</span><span class="p">)</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">k</span><span class="o">*</span><span class="n">t</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">22</span><span class="cl">
+</span></span><span class="line"><span class="ln">23</span><span class="cl"><span class="c1"># Define the derivative (only depends on the current temp, not time)</span>
+</span></span><span class="line"><span class="ln">24</span><span class="cl"><span class="k">def</span> <span class="nf">dTdt</span><span class="p">(</span><span class="n">T</span><span class="p">):</span>
+</span></span><span class="line"><span class="ln">25</span><span class="cl">    <span class="k">return</span> <span class="o">-</span><span class="n">k</span> <span class="o">*</span> <span class="p">(</span><span class="n">T</span> <span class="o">-</span> <span class="n">T_surr</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">26</span><span class="cl">
+</span></span><span class="line"><span class="ln">27</span><span class="cl"><span class="c1"># Define our Euler integration function</span>
+</span></span><span class="line"><span class="ln">28</span><span class="cl"><span class="k">def</span> <span class="nf">euler</span><span class="p">(</span><span class="n">dTdt</span><span class="p">,</span> <span class="n">T0</span><span class="p">,</span> <span class="n">t0</span><span class="p">,</span> <span class="n">t_end</span><span class="p">,</span> <span class="n">h</span><span class="o">=</span><span class="mf">0.1</span><span class="p">):</span>
+</span></span><span class="line"><span class="ln">29</span><span class="cl">    <span class="s1">&#39;&#39;&#39;
+</span></span></span><span class="line"><span class="ln">30</span><span class="cl"><span class="s1">    Takes the derivative function, an initial condition, the time we want to integrate until,
+</span></span></span><span class="line"><span class="ln">31</span><span class="cl"><span class="s1">    and a step size.
+</span></span></span><span class="line"><span class="ln">32</span><span class="cl"><span class="s1">
+</span></span></span><span class="line"><span class="ln">33</span><span class="cl"><span class="s1">    Returns arrays of time and temperature values
+</span></span></span><span class="line"><span class="ln">34</span><span class="cl"><span class="s1">    &#39;&#39;&#39;</span>
+</span></span><span class="line"><span class="ln">35</span><span class="cl">    <span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">t0</span><span class="p">,</span> <span class="n">t_end</span><span class="o">+</span><span class="n">h</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">36</span><span class="cl">    <span class="n">T</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">t</span><span class="p">))</span>
+</span></span><span class="line"><span class="ln">37</span><span class="cl">
+</span></span><span class="line"><span class="ln">38</span><span class="cl">    <span class="n">T</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">T0</span>
+</span></span><span class="line"><span class="ln">39</span><span class="cl">
+</span></span><span class="line"><span class="ln">40</span><span class="cl">    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">t</span><span class="p">)):</span>
+</span></span><span class="line"><span class="ln">41</span><span class="cl">        <span class="n">T</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">T</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">h</span> <span class="o">*</span> <span class="n">dTdt</span><span class="p">(</span><span class="n">T</span><span class="p">[</span><span class="n">i</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+</span></span><span class="line"><span class="ln">42</span><span class="cl">
+</span></span><span class="line"><span class="ln">43</span><span class="cl">    <span class="k">return</span> <span class="n">t</span><span class="p">,</span> <span class="n">T</span>
+</span></span><span class="line"><span class="ln">44</span><span class="cl">
+</span></span><span class="line"><span class="ln">45</span><span class="cl">
+</span></span><span class="line"><span class="ln">46</span><span class="cl"><span class="c1"># Parameters</span>
+</span></span><span class="line"><span class="ln">47</span><span class="cl"><span class="n">t0</span> <span class="o">=</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="ln">48</span><span class="cl"><span class="n">T0</span> <span class="o">=</span> <span class="mi">30</span>
+</span></span><span class="line"><span class="ln">49</span><span class="cl"><span class="n">t_end</span> <span class="o">=</span> <span class="mi">5</span>
+</span></span><span class="line"><span class="ln">50</span><span class="cl">
+</span></span><span class="line"><span class="ln">51</span><span class="cl"><span class="c1"># Get analytical solution</span>
+</span></span><span class="line"><span class="ln">52</span><span class="cl"><span class="n">t_analytical</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">t0</span><span class="p">,</span> <span class="n">t_end</span><span class="o">+</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">53</span><span class="cl"><span class="n">T_analytical</span> <span class="o">=</span> <span class="n">solve_T</span><span class="p">(</span><span class="n">t_analytical</span><span class="p">,</span> <span class="n">T0</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">54</span><span class="cl">
+</span></span><span class="line"><span class="ln">55</span><span class="cl"><span class="c1"># Get Euler numerical solution</span>
+</span></span><span class="line"><span class="ln">56</span><span class="cl"><span class="n">t_euler_05</span><span class="p">,</span> <span class="n">T_euler_05</span> <span class="o">=</span> <span class="n">euler</span><span class="p">(</span><span class="n">dTdt</span><span class="p">,</span> <span class="n">T0</span><span class="p">,</span> <span class="n">t0</span><span class="p">,</span> <span class="n">t_end</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">57</span><span class="cl"><span class="n">t_euler_01</span><span class="p">,</span> <span class="n">T_euler_01</span> <span class="o">=</span> <span class="n">euler</span><span class="p">(</span><span class="n">dTdt</span><span class="p">,</span> <span class="n">T0</span><span class="p">,</span> <span class="n">t0</span><span class="p">,</span> <span class="n">t_end</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">58</span><span class="cl">
+</span></span><span class="line"><span class="ln">59</span><span class="cl"><span class="c1"># Plotting</span>
+</span></span><span class="line"><span class="ln">60</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">t_analytical</span><span class="p">,</span> <span class="n">T_analytical</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Analytical&#39;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">61</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">t_euler_05</span><span class="p">,</span> <span class="n">T_euler_05</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Euler method, h = 0.5&#39;</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">62</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">t_euler_01</span><span class="p">,</span> <span class="n">T_euler_01</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Euler method, h = 0.1&#39;</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">63</span><span class="cl">
+</span></span><span class="line"><span class="ln">64</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s2">&#34;Analytical and Euler method solutions to Newton&#39;s cooling law&#34;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">65</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Time [s]&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">66</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Temperature [C]&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">67</span><span class="cl">
+</span></span><span class="line"><span class="ln">68</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">fontsize</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">69</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</span></span></code></pre></div>
+</details></p>
+
+<p>It is clear that the step size plays a big role in the accuracy of the solution. We could continue to reduce the step size, but that will quickly increase the time it takes to get a solution beyond a reasonable amount. Maybe we can think of a better way of doing this&hellip;</p>
+<h3 id="runge-kutta-methods">Runge-Kutta Methods<a hidden class="anchor" aria-hidden="true" href="#runge-kutta-methods">#</a></h3>
+<p>A major problem with Euler&rsquo;s method is that using the derivative of the point we&rsquo;re at is not very good at estimating the next value of the function (for the kind of step sizes we want to use). The derivative is constantly changing and could be vastly different at the new value. We might get a more accurate step if we use a mix of the derivative at our start point and end point.</p>
+<p>This is the basis for how Runge-Kutta methods work. We find derivatives between the start and end points of each step and use a weighted average of those as the actual derivative for the step. The simplest version of this would be to just use the derivative at the start of the step &ndash; which is exactly the Euler method! The Euler method is a 1st order Runge-Kutta method.</p>
+<p>Let&rsquo;s define the method more concretely.</p>
+<h4 id="derivation-of-runge-kutta-methods">Derivation of Runge-Kutta Methods<a hidden class="anchor" aria-hidden="true" href="#derivation-of-runge-kutta-methods">#</a></h4>
+<p>We will start by examining the initial problem again, being that we want to solve the following general equation for y:</p>
+<p>$$
+\dfrac{dy}{dt} = f(y, t)
+$$</p>
+<p>This could be our cooling equation from before,</p>
+<p>$$
+\dfrac{dT}{dt} = -k(T - T_{surr})
+$$</p>
+<p>or something more complex like a state space defining a spring, mass, damper system:</p>
+<p>$$
+\bold{\dot{x}} =
+\begin{bmatrix} 0 &amp; 1 \\ \frac{-k}{m} &amp; \frac{-c}{m} \end{bmatrix} \bold{x} +
+\begin{bmatrix} 0  \\ \frac{1}{m} \end{bmatrix} u(t)
+$$</p>
+<p>In both cases, we are given the derivative of the state we want to solve for (eg. temperature) and the derivative depends on the value of the state and time. In the case of the cooling equation, the derivative only depends on the state, <strong>T</strong>, and not time.</p>
+<p>Ideally, we could just integrate the derivative to find the value at \( t + h \):</p>
+<p>$$
+y(t+h) = y(t) + \int_{\tau=t}^{\tau=t+h}{\dfrac{dy(\tau)}{d\tau}} d\tau
+$$</p>
+<p>However, as we said earlier, this is often hard or impossible. We can instead approximate the integral with a weighted sum.</p>
+<h5 id="weighted-sum-approximations">Weighted Sum Approximations<a hidden class="anchor" aria-hidden="true" href="#weighted-sum-approximations">#</a></h5>
+<p>Let&rsquo;s build this up slowly. Take the following function, for example:</p>
+<p>$$
+f(t) = t^3 - 2t^2 - t + 3
+$$</p>
+<p>How would we evaluate</p>
+<p>$$
+\int_0^2{f(t)}dt
+$$</p>
+<p>We can do this analytically, which is like summing up tiny vertical slices of the function to find the total area underneath it. But we could think about this a different way. We can get that same area by finding the average value of the function over the interval, then multiplying by the length of the interval. You can see this in <strong>Figure 4</strong>.</p>
+<figure class="align-center ">
+    <img loading="lazy" src="../img/weighted_sum_approx.png#center"
+         alt="Figure 4: Comparison of areas found by integration and weighted sum approximation."/> <figcaption>
+            <p><strong>Figure 4</strong>: Comparison of areas found by integration and weighted sum approximation.</p>
+        </figcaption>
+</figure>
+
+
+
+<p><details >
+  <summary markdown="span">Figure 4 code</summary>
+  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="ln"> 1</span><span class="cl"><span class="s1">&#39;&#39;&#39;
+</span></span></span><span class="line"><span class="ln"> 2</span><span class="cl"><span class="s1">Making sense of weighted sums as integral approximations.
+</span></span></span><span class="line"><span class="ln"> 3</span><span class="cl"><span class="s1">
+</span></span></span><span class="line"><span class="ln"> 4</span><span class="cl"><span class="s1">Created by: simmeon
+</span></span></span><span class="line"><span class="ln"> 5</span><span class="cl"><span class="s1">Last Modified: 28/04/24
+</span></span></span><span class="line"><span class="ln"> 6</span><span class="cl"><span class="s1">License: MIT
+</span></span></span><span class="line"><span class="ln"> 7</span><span class="cl"><span class="s1">
+</span></span></span><span class="line"><span class="ln"> 8</span><span class="cl"><span class="s1">&#39;&#39;&#39;</span>
+</span></span><span class="line"><span class="ln"> 9</span><span class="cl">
+</span></span><span class="line"><span class="ln">10</span><span class="cl"><span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+</span></span><span class="line"><span class="ln">11</span><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="ln">12</span><span class="cl">
+</span></span><span class="line"><span class="ln">13</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">style</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="s1">&#39;https://github.com/dhaitz/matplotlib-stylesheets/raw/master/pitayasmoothie-dark.mplstyle&#39;</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">14</span><span class="cl">
+</span></span><span class="line"><span class="ln">15</span><span class="cl"><span class="k">def</span> <span class="nf">f</span><span class="p">(</span><span class="n">t</span><span class="p">):</span>
+</span></span><span class="line"><span class="ln">16</span><span class="cl">    <span class="k">return</span> <span class="n">t</span><span class="o">**</span><span class="mi">3</span> <span class="o">-</span><span class="mi">2</span><span class="o">*</span><span class="n">t</span><span class="o">**</span><span class="mi">2</span> <span class="o">-</span> <span class="n">t</span> <span class="o">+</span> <span class="mi">3</span>
+</span></span><span class="line"><span class="ln">17</span><span class="cl">
+</span></span><span class="line"><span class="ln">18</span><span class="cl"><span class="c1"># Perform a weighted sum approximation</span>
+</span></span><span class="line"><span class="ln">19</span><span class="cl"><span class="n">N</span> <span class="o">=</span> <span class="mi">10</span>  <span class="c1"># higher number of samples, N, gives a better approximation</span>
+</span></span><span class="line"><span class="ln">20</span><span class="cl"><span class="nb">sum</span> <span class="o">=</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="ln">21</span><span class="cl"><span class="n">t0</span> <span class="o">=</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="ln">22</span><span class="cl"><span class="n">h</span> <span class="o">=</span> <span class="mi">2</span>
+</span></span><span class="line"><span class="ln">23</span><span class="cl"><span class="n">nodes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">t0</span><span class="p">,</span> <span class="n">t0</span><span class="o">+</span><span class="n">h</span><span class="p">,</span> <span class="n">N</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">24</span><span class="cl">
+</span></span><span class="line"><span class="ln">25</span><span class="cl"><span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="n">nodes</span><span class="p">:</span>
+</span></span><span class="line"><span class="ln">26</span><span class="cl">    <span class="nb">sum</span> <span class="o">+=</span> <span class="n">f</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">27</span><span class="cl"><span class="n">weighted_sum</span> <span class="o">=</span> <span class="nb">sum</span> <span class="o">/</span> <span class="n">N</span>
+</span></span><span class="line"><span class="ln">28</span><span class="cl">
+</span></span><span class="line"><span class="ln">29</span><span class="cl"><span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Weighted sum area: &#39;</span><span class="p">,</span> <span class="n">weighted_sum</span> <span class="o">*</span> <span class="n">h</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">30</span><span class="cl">
+</span></span><span class="line"><span class="ln">31</span><span class="cl"><span class="c1"># Plotting</span>
+</span></span><span class="line"><span class="ln">32</span><span class="cl"><span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">t0</span><span class="p">,</span> <span class="n">t0</span> <span class="o">+</span> <span class="n">h</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">33</span><span class="cl"><span class="n">y</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">34</span><span class="cl">
+</span></span><span class="line"><span class="ln">35</span><span class="cl"><span class="c1"># Integration result</span>
+</span></span><span class="line"><span class="ln">36</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">37</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">t</span><span class="p">,</span><span class="n">y</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">38</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">fill_between</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">39</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span><span class="s1">&#39;Area = 2.67&#39;</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mf">2.5</span><span class="p">),</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">40</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Area from integration&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">41</span><span class="cl">
+</span></span><span class="line"><span class="ln">42</span><span class="cl"><span class="c1"># Weighted sum result</span>
+</span></span><span class="line"><span class="ln">43</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">44</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">t</span><span class="p">,</span><span class="n">y</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">45</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">fill_between</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">weighted_sum</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">46</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span><span class="s1">&#39;Area = </span><span class="si">{:.2f}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">weighted_sum</span> <span class="o">*</span> <span class="n">h</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mf">2.5</span><span class="p">),</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">47</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Area from weighted sum&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">48</span><span class="cl">
+</span></span><span class="line"><span class="ln">49</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</span></span></code></pre></div>
+</details></p>
+
+<p>To put this idea into an equation, we can say:</p>
+<p>$$
+\int_0^2{f(t)}dt \approx \frac{2}{\sum{w_i}} \sum_{i=1}^N{w_i  f(t_i)}
+$$</p>
+<p>Where \( N \) is the number of points we sample from the function to find the average, \( w_i \) is the weighting we give to each point, and \( t_i \) is some point inside the integration bounds of \( [0, 2] \). We can simplify this by giving every point a weighting of 1:</p>
+<p>$$
+\int_0^2{f(t)}dt \approx \frac{2}{N} \sum_{i=1}^N{f(t_i)}
+$$</p>
+<p>The more points we sample, the closer the average will be to the actual average of the function and therefore the actual integral.</p>
+<p>We can extend this concept to our derivative from earlier:</p>
+<p>$$
+\int_{\tau=t}^{\tau=t+h}{\dfrac{dy(\tau)}{d\tau}} d\tau
+\approx
+\frac{h}{\sum{w_i}} \sum_{i=1}^N{w_i y^{\prime}(t+v_i h, y(t+v_i h))}
+$$</p>
+<p><em><strong>What a mess.</strong></em></p>
+<p>We&rsquo;re still using the same concept of a weighted sum to find the average value of the derivative function, but since the derivative depends on \( t \) <em>and</em> \( y \) it&rsquo;s a bit more complicated. We introduced \( v_i \) to help define which values of the function we sample, also called <em>nodes</em>. This can range from 0 to 1 to cover the interval from \( t \) to \( t+h \). Of course, whatever time we evaluate our derivative at must be the same time we use to get the \( y \) values for the derivative.</p>
+<p>For the sake of simplicity let&rsquo;s say that all our weights will sum up to 1. We are <strong>not</strong>, however, going to assume that all our weights will be the same value as we did previously.</p>
+<p>Considering all this, the equation we are trying to solve is now:</p>
+<p>$$
+y(t+h) = y(t) + h \sum_{i=1}^N{w_i y^{\prime}(t+v_i h, y(t+v_i h))}
+$$</p>
+<h5 id="the-runge-kutta-family">The Runge-Kutta Family<a hidden class="anchor" aria-hidden="true" href="#the-runge-kutta-family">#</a></h5>
+<p>You might have noticed there is a problem with the sum we just defined. In particular, we don&rsquo;t know what \( y(t+v_i h) \) is. In fact, finding this is basically the point of the whole method. So how do we deal with this?</p>
+<p>Simply, we are going to make worse approximations of \( y(t+v_i h) \) so that we can make a much better approximation of \( y(t + h) \). Again, these \( y(t+v_i h) \) values are used to find values of the derivative that we will then average. Let&rsquo;s define what we will do to find these approximations.</p>
+<p>We will start by saying that \( v_1 = 0 \). This means the first term in the sum will be</p>
+<p>$$
+w_1 y^{\prime}(t, y(t))
+$$</p>
+<p>If this was the only term in our sum (so \( w_1 = 1 \) ), then the equation we would be solving would be:</p>
+<p>$$
+y(t+h) \approx y(t) + h y^{\prime}(t, y(t))
+$$</p>
+<p>This should look familiar, it&rsquo;s the Euler method! This is what we mean by the Euler method is a 1st order Runge-Kutta method &ndash; because it uses one term in the weighted sum. Or in other words, it is a linear approximation.</p>
+<p>For simplicity, we will write this first sum term as:</p>
+<p>$$
+k_1 = y^{\prime}(t, y(t)) h
+$$</p>
+<p>\( k_1 \) is a 1st order estimate of the change in \( y \) between \( y(t) \) and \( y(t+h) \).</p>
+<p>The second term gets trickier as we have to somehow estimate \( y(t+v_2 h) \). Conveniently, we have just found an estimate for how \( y \) changes: \( k_1 \). So we can utilise some fraction of this change to create our estimate for the second weighted sum term where:</p>
+<p>$$
+y^{\prime}(t + \alpha_2 h, y(t) + \beta_{2,1} k_1)
+$$</p>
+<p>We don&rsquo;t know yet how much of \( k_1 \) we should add, we will figure that out later. Same with what time we should sample at.</p>
+<p>We have changed notation slightly to help set up higher order Runge-Kutta methods. Instead of \( v_i \) we are now using \( \alpha_i \) to tell us about what time we are sampling at. And since our \( y \) value is no longer defined in simple terms of time, we are going to use \( \beta_{i,j} \) to describe how much of previous estimates we will add to the estimate for the new term.</p>
+<p>We define</p>
+<p>$$
+k_2 = y^{\prime}(t + \alpha_2 h, y(t) + \beta_{2,1} k_1) h
+$$</p>
+<p>so that the equation we are solving is now:</p>
+<p>$$
+y(t+h) \approx y(t) + w_1 k_1 + w_2 k_2
+$$</p>
+<p>With that, we have defined the 2nd order Runge-Kutta Method!</p>
+<p>We can continue the weighted sum with a third and fourth term, following similar logic of using the previous estimates to inform the new value of \( y(t + v_i h) \). This will give us:</p>
+<p>$$
+k_3 = y^{\prime}(t + \alpha_3 h, y(t) + \beta_{3,1} k_1 + \beta_{3,2} k_2) h
+\\
+k_4 = y^{\prime}(t + \alpha_4 h, y(t) + \beta_{4,1} k_1 + \beta_{4,2} k_2 + \beta_{4,3} k_3) h
+$$</p>
+<p>This gives the 4th order Runge-Kutta method:</p>
+<p>$$
+y(t+h) \approx y(t) + w_1 k_1 + w_2 k_2 + w_3 k_3 + w_4 k_4
+$$</p>
+<p>Now to actually solve these higher order methods, we need to define these coefficients&hellip;</p>
+<h5 id="defining-coefficients">Defining Coefficients<a hidden class="anchor" aria-hidden="true" href="#defining-coefficients">#</a></h5>
+<p>We need to define all the \( \alpha_i \), \( \beta_{i,j} \), and \( w_i \) coefficients to be able to use these methods. We can do this by comparing the Taylor series expansion of our approximation to the Taylor series expansion of \( y(t+h) \) and equating coefficients. Let&rsquo;s do this for the 2nd order method:</p>
+<p>$$
+y(t+h) \approx y(t) + w_1 k_1 + w_2 k_2
+$$</p>
+<p>As this is a 2nd order method, we will need to find the 2nd order expansions of the left and right sides.</p>
+<p>Let&rsquo;s start with the left. The 2nd order Taylor series expansion of \( y(t+h) \) about \( t \) is:</p>
+<p>$$
+y(t+h) \approx y(t) + h \dfrac{dy}{dt} \Big| _{t,y} + \frac{h^2}{2} \dfrac{d^2y}{dt^2} \Big| _{t,y} + O(h^3)
+$$</p>
+<p>We can write our derivative:</p>
+<p>$$
+\dfrac{dy}{dt} = f(t, y)
+\\
+{}
+\\
+\dfrac{d^2y}{dt^2} = \dfrac{df(t,y)}{dt} = \dfrac{\partial f}{\partial t} + \dfrac{\partial f}{\partial y} \dfrac{dy}{dt} =
+\dfrac{\partial f}{\partial t} + f \dfrac{\partial f}{\partial y}
+$$</p>
+<p>This makes our left hand side (using slightly different notation):</p>
+<p>$$
+y_{n+1} \approx y_n + h f(t_n, y_n) + \frac{h^2}{2}  \bigg(\dfrac{\partial f}{\partial t} + f \dfrac{\partial f}{\partial y}\bigg) \bigg|_{t_n, y_n} + O(h^3)
+$$</p>
+<p>Great! Let&rsquo;s do the right hand side now. We can write the right hand same with the same notation as above:</p>
+<p>$$
+y_n + w_1 k_{1,n} + w_2 k_{2,n}
+$$</p>
+<p>\( k_2 \) is a bit tricky to expand. Our \( k_2 \) term is made up mostly of a function with the form \( f(t + \Delta t, y + \Delta y) \), which will need to be expanded. In general, the 2nd order expansion looks like:</p>
+<p>$$
+f(t + \Delta t, y + \Delta y) = f(t, y) + \Delta t \dfrac{\partial f}{\partial t}\bigg| _{t, y} +
+\Delta y \dfrac{\partial f}{\partial y} \bigg| _{t, y} + O(h^3)
+$$</p>
+<p>Applying this to \( k_2 \) gives:</p>
+<p>$$
+k_{2,n} = h f(t + \alpha_2 h, y_n + \beta_{2,1} k_1) \approx h \bigg( f(t_n, y_n) + \alpha _2 h \dfrac{\partial f}{\partial t} \bigg| _{t_n, y_n} +
+\beta _{2,1} k_1 \dfrac{\partial f}{\partial y} \bigg| _{t_n, y_n} \bigg)
+$$</p>
+<p>All together, the right hand side is then</p>
+<p>$$
+y_n + w_1 k_{1,n} + w_2 k_{2,n} \approx y_n + w_1 h f(t_n, y_n) +
+w_2 h \bigg( f(t_n, y_n) + \alpha _2 h \dfrac{\partial f}{\partial t} \bigg| _{t_n, y_n} +
+\beta _{2,1} k_1 \dfrac{\partial f}{\partial y} \bigg| _{t_n, y_n} \bigg) + O(h^3)
+$$</p>
+<p>which we can rearrange to be in the same form (substituting in for \( k_1 \)) as the left hand side:</p>
+<p>$$
+y_n + w_1 k_{1,n} + w_2 k_{2,n} \approx
+y_n + (w_1 + w_2) h f(t_n, y_n) + \frac{h^2}{2} \bigg(2 w_2 \alpha_2 \dfrac{\partial f}{\partial t} +
+2 w_2 \beta _{2,1} f \dfrac{\partial f}{\partial y}  \bigg) \bigg| _{t_n, y_n} + O(h^3)
+$$</p>
+<p>Finally, we have both expansions and can equate the coefficients:</p>
+<p>$$
+y(t+h) \approx y(t) + w_1 k_1 + w_2 k_2
+\\
+{}
+\\
+\big\downarrow
+\\
+{}
+\\
+y_n + h f(t_n, y_n) + \frac{h^2}{2}  \bigg(\dfrac{\partial f}{\partial t} + f \dfrac{\partial f}{\partial y}\bigg) \bigg|_{t_n, y_n} + O(h^3)
+\\ {} \\ = \\ {} \\
+y_n + (w_1 + w_2) h f(t_n, y_n) + \frac{h^2}{2} \bigg(2 w_2 \alpha_2 \dfrac{\partial f}{\partial t} +
+2 w_2 \beta _{2,1} f \dfrac{\partial f}{\partial y}  \bigg) \bigg| _{t_n, y_n} + O(h^3)
+$$</p>
+<p>From this, we can see that our coefficients must satisfy the following equations:</p>
+<p>$$
+w_1 + w_2 = 1 \\ {} \\
+w_2 \alpha_2= \frac{1}{2} \\ {} \\
+w_2 \beta_{2,1} = \frac{1}{2}
+$$</p>
+<p>With 3 equations and 4 unknows, there are infinitely many solutions. However, the standard choices are:</p>
+<p>$$
+\alpha_2 = \beta_{2,1} = 1
+\\ {} \\
+w_1 = w_2 = \frac{1}{2}
+$$</p>
+<p>This brings us <em>finally</em> to the complete <strong>2nd order Runge-Kutta Method</strong>:</p>
+<p>$$
+k_1 = h y^\prime (t_n, y_n)
+\\ {} \\
+k_2 = h y^\prime (t_n + h, y_n + k_1)
+\\ {} \\
+y_{n+1} = y_n + \frac{1}{2} k_1 + \frac{1}{2} k_2
+$$</p>
+<p>A similar (messier) method of expansions can be used to for higher order methods. The standard terms for the <strong>4th order Runge-Kutta method</strong> are:</p>
+<p>$$
+k_1 = h y^\prime (t_n, y_n)
+\\ {} \\
+k_2 = h y^\prime (t_n + \frac{h}{2}, y_n + \frac{k_1}{2})
+\\ {} \\
+k_3 = h y^\prime (t_n + \frac{h}{2}, y_n + \frac{k_2}{2})
+\\ {} \\
+k_4 = h y^\prime (t_n + h, y_n + k_3)
+\\ {} \\
+y_{n+1} = y_n + \frac{1}{6} (k_1 + 2 k_2 + 2 k_3 + k_4)
+$$</p>
+<p>Keep in mind that there are infinitely many choices of these coefficients and lots of research has gone into figuring out which ones work best. We will stick to these simple standard ones for now.</p>
+<h4 id="implementing-runge-kutta">Implementing Runge-Kutta<a hidden class="anchor" aria-hidden="true" href="#implementing-runge-kutta">#</a></h4>
+<p>Now that we have finally derived the Runge-Kutta methods, let&rsquo;s implement them in code. We will do both the 2nd order and 4th order methods and compare their accuracy.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="ln"> 1</span><span class="cl"><span class="k">def</span> <span class="nf">rk2</span><span class="p">(</span><span class="n">dydt</span><span class="p">,</span> <span class="n">t0</span><span class="p">,</span> <span class="n">y0</span><span class="p">,</span> <span class="n">t_end</span><span class="p">,</span> <span class="n">h</span><span class="p">):</span>
+</span></span><span class="line"><span class="ln"> 2</span><span class="cl">    <span class="s2">&#34;&#34;&#34;
+</span></span></span><span class="line"><span class="ln"> 3</span><span class="cl"><span class="s2">    Solves a first-order ODE using the 2nd order Runge-Kutta method
+</span></span></span><span class="line"><span class="ln"> 4</span><span class="cl"><span class="s2">
+</span></span></span><span class="line"><span class="ln"> 5</span><span class="cl"><span class="s2">    Args:
+</span></span></span><span class="line"><span class="ln"> 6</span><span class="cl"><span class="s2">        dydt: The derivative function to integrate
+</span></span></span><span class="line"><span class="ln"> 7</span><span class="cl"><span class="s2">        t0: Initial value of time
+</span></span></span><span class="line"><span class="ln"> 8</span><span class="cl"><span class="s2">        y0: Initial value of y
+</span></span></span><span class="line"><span class="ln"> 9</span><span class="cl"><span class="s2">        t_end: Final time for integration
+</span></span></span><span class="line"><span class="ln">10</span><span class="cl"><span class="s2">        h: Step size
+</span></span></span><span class="line"><span class="ln">11</span><span class="cl"><span class="s2">
+</span></span></span><span class="line"><span class="ln">12</span><span class="cl"><span class="s2">    Returns:
+</span></span></span><span class="line"><span class="ln">13</span><span class="cl"><span class="s2">        An array of y values for each time step
+</span></span></span><span class="line"><span class="ln">14</span><span class="cl"><span class="s2">    &#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="ln">15</span><span class="cl">    <span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">t0</span><span class="p">,</span> <span class="n">t_end</span><span class="o">+</span><span class="n">h</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span>  <span class="c1"># Array of time points</span>
+</span></span><span class="line"><span class="ln">16</span><span class="cl">    <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">17</span><span class="cl">    <span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">y0</span>
+</span></span><span class="line"><span class="ln">18</span><span class="cl">
+</span></span><span class="line"><span class="ln">19</span><span class="cl">    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">t</span><span class="p">)):</span>
+</span></span><span class="line hl"><span class="ln">20</span><span class="cl">        <span class="n">k1</span> <span class="o">=</span> <span class="n">h</span> <span class="o">*</span> <span class="n">dydt</span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">],</span> <span class="n">y</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span>
+</span></span><span class="line hl"><span class="ln">21</span><span class="cl">        <span class="n">k2</span> <span class="o">=</span> <span class="n">h</span> <span class="o">*</span> <span class="n">dydt</span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">h</span><span class="p">,</span> <span class="n">y</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">k1</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">22</span><span class="cl">
+</span></span><span class="line hl"><span class="ln">23</span><span class="cl">        <span class="n">y</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">y</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="n">k1</span> <span class="o">+</span> <span class="n">k2</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+</span></span><span class="line"><span class="ln">24</span><span class="cl">
+</span></span><span class="line"><span class="ln">25</span><span class="cl">    <span class="k">return</span> <span class="n">y</span>
+</span></span></code></pre></div><p>We can see how, at each time step, we calculate the \( k_i \) values and use these to estimate the next value of the function.</p>
+<div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="ln"> 1</span><span class="cl"><span class="k">def</span> <span class="nf">rk4</span><span class="p">(</span><span class="n">dydt</span><span class="p">,</span> <span class="n">t0</span><span class="p">,</span> <span class="n">y0</span><span class="p">,</span> <span class="n">t_end</span><span class="p">,</span> <span class="n">h</span><span class="p">):</span>
+</span></span><span class="line"><span class="ln"> 2</span><span class="cl">    <span class="s2">&#34;&#34;&#34;
+</span></span></span><span class="line"><span class="ln"> 3</span><span class="cl"><span class="s2">    Solves a first-order ODE using the 4th order Runge-Kutta method
+</span></span></span><span class="line"><span class="ln"> 4</span><span class="cl"><span class="s2">
+</span></span></span><span class="line"><span class="ln"> 5</span><span class="cl"><span class="s2">    Args:
+</span></span></span><span class="line"><span class="ln"> 6</span><span class="cl"><span class="s2">        dydt: The derivative function to integrate
+</span></span></span><span class="line"><span class="ln"> 7</span><span class="cl"><span class="s2">        t0: Initial value of time
+</span></span></span><span class="line"><span class="ln"> 8</span><span class="cl"><span class="s2">        y0: Initial value of y
+</span></span></span><span class="line"><span class="ln"> 9</span><span class="cl"><span class="s2">        t_end: Final time for integration
+</span></span></span><span class="line"><span class="ln">10</span><span class="cl"><span class="s2">        h: Step size
+</span></span></span><span class="line"><span class="ln">11</span><span class="cl"><span class="s2">
+</span></span></span><span class="line"><span class="ln">12</span><span class="cl"><span class="s2">    Returns:
+</span></span></span><span class="line"><span class="ln">13</span><span class="cl"><span class="s2">        An array of y values for each time step
+</span></span></span><span class="line"><span class="ln">14</span><span class="cl"><span class="s2">    &#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="ln">15</span><span class="cl">    <span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">t0</span><span class="p">,</span> <span class="n">t_end</span><span class="o">+</span><span class="n">h</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">16</span><span class="cl">    <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">17</span><span class="cl">    <span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">y0</span>
+</span></span><span class="line"><span class="ln">18</span><span class="cl">
+</span></span><span class="line"><span class="ln">19</span><span class="cl">    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">t</span><span class="p">)):</span>
+</span></span><span class="line hl"><span class="ln">20</span><span class="cl">        <span class="n">k1</span> <span class="o">=</span> <span class="n">h</span> <span class="o">*</span> <span class="n">dydt</span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">],</span> <span class="n">y</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span>
+</span></span><span class="line hl"><span class="ln">21</span><span class="cl">        <span class="n">k2</span> <span class="o">=</span> <span class="n">h</span> <span class="o">*</span> <span class="n">dydt</span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">h</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">y</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">k1</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+</span></span><span class="line hl"><span class="ln">22</span><span class="cl">        <span class="n">k3</span> <span class="o">=</span> <span class="n">h</span> <span class="o">*</span> <span class="n">dydt</span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">h</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">y</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">k2</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+</span></span><span class="line hl"><span class="ln">23</span><span class="cl">        <span class="n">k4</span> <span class="o">=</span> <span class="n">h</span> <span class="o">*</span> <span class="n">dydt</span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">y</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">k3</span><span class="p">)</span> 
+</span></span><span class="line"><span class="ln">24</span><span class="cl">
+</span></span><span class="line hl"><span class="ln">25</span><span class="cl">        <span class="n">y</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">y</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="n">k1</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">k2</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">k3</span> <span class="o">+</span> <span class="n">k4</span><span class="p">)</span> <span class="o">/</span> <span class="mi">6</span>
+</span></span><span class="line"><span class="ln">26</span><span class="cl"> 
+</span></span><span class="line"><span class="ln">27</span><span class="cl">    <span class="k">return</span> <span class="n">y</span>
+</span></span></code></pre></div><p>After all that derivation, the actual method is remarkably clean and simple to implement. <strong>Figure 5</strong> gives an idea of how these higher order functions perform compared to our original Euler method.</p>
+<figure class="align-center ">
+    <img loading="lazy" src="../img/solver_comparison.png#center"
+         alt="Figure 5: Comparing the accuracy of different order ODE solvers, h = 0.1"/> <figcaption>
+            <p><strong>Figure 5</strong>: Comparing the accuracy of different order ODE solvers, h = 0.1</p>
+        </figcaption>
+</figure>
+
+<p>All the solvers are using the same step size here. As we can see, the 4th order method is better than the 2nd order method. They are both much more accurate than the 1st order Euler method.</p>
+<p>As a final comparison, let&rsquo;s look at Newton&rsquo;s law of cooling one last time. <strong>Figure 6</strong> shows how our 4th order solver compares to our previous test with the Euler method.</p>
+<figure class="align-center ">
+    <img loading="lazy" src="../img/rk4_cooling_eqn.png#center"
+         alt="Figure 6: Comparing the accuracy of the RK4 and Euler methods on the cooling equation. Tsurr = 20 C, k = 1, h = 0.5"/> <figcaption>
+            <p><strong>Figure 6</strong>: Comparing the accuracy of the RK4 and Euler methods on the cooling equation. T<sub>surr</sub> = 20 C, k = 1, h = 0.5</p>
+        </figcaption>
+</figure>
+
+
+
+<p><details >
+  <summary markdown="span">Figure 5 and 6 code</summary>
+  <div class="highlight"><pre tabindex="0" class="chroma"><code class="language-python" data-lang="python"><span class="line"><span class="ln">  1</span><span class="cl"><span class="s1">&#39;&#39;&#39;
+</span></span></span><span class="line"><span class="ln">  2</span><span class="cl"><span class="s1">Implementing and comparing the Runge-Kutta 2nd and 4th order methods.
+</span></span></span><span class="line"><span class="ln">  3</span><span class="cl"><span class="s1">We can also compare to the Euler method (1st order).
+</span></span></span><span class="line"><span class="ln">  4</span><span class="cl"><span class="s1">
+</span></span></span><span class="line"><span class="ln">  5</span><span class="cl"><span class="s1">Created by: simmeon
+</span></span></span><span class="line"><span class="ln">  6</span><span class="cl"><span class="s1">Last Modified: 29/04/24
+</span></span></span><span class="line"><span class="ln">  7</span><span class="cl"><span class="s1">License: MIT
+</span></span></span><span class="line"><span class="ln">  8</span><span class="cl"><span class="s1">
+</span></span></span><span class="line"><span class="ln">  9</span><span class="cl"><span class="s1">&#39;&#39;&#39;</span>
+</span></span><span class="line"><span class="ln"> 10</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 11</span><span class="cl"><span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+</span></span><span class="line"><span class="ln"> 12</span><span class="cl"><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+</span></span><span class="line"><span class="ln"> 13</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 14</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">style</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="s1">&#39;https://github.com/dhaitz/matplotlib-stylesheets/raw/master/pitayasmoothie-dark.mplstyle&#39;</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln"> 15</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 16</span><span class="cl"><span class="c1"># Define some functions to test our solvers with</span>
+</span></span><span class="line"><span class="ln"> 17</span><span class="cl"><span class="k">def</span> <span class="nf">dydt</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+</span></span><span class="line"><span class="ln"> 18</span><span class="cl">    <span class="k">return</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">t</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="mi">20</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mi">10</span> <span class="o">*</span> <span class="n">t</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln"> 19</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 20</span><span class="cl"><span class="k">def</span> <span class="nf">analytical_solution</span><span class="p">(</span><span class="n">t</span><span class="p">):</span>
+</span></span><span class="line"><span class="ln"> 21</span><span class="cl">    <span class="k">return</span> <span class="n">t</span><span class="o">**</span><span class="mi">3</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="mi">10</span> <span class="o">*</span> <span class="n">t</span><span class="p">)</span>  <span class="c1"># Analytical solution to the ODE </span>
+</span></span><span class="line"><span class="ln"> 22</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 23</span><span class="cl"><span class="c1"># # Define our cooling function</span>
+</span></span><span class="line"><span class="ln"> 24</span><span class="cl"><span class="c1"># def solve_T(t, T0):</span>
+</span></span><span class="line"><span class="ln"> 25</span><span class="cl"><span class="c1">#     return T_surr + (T0 - T_surr)*np.exp(-k*t)</span>
+</span></span><span class="line"><span class="ln"> 26</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 27</span><span class="cl"><span class="c1"># # Define the derivative (only depends on the current temp, not time)</span>
+</span></span><span class="line"><span class="ln"> 28</span><span class="cl"><span class="c1"># def dTdt(T):</span>
+</span></span><span class="line"><span class="ln"> 29</span><span class="cl"><span class="c1">#     return -k * (T - T_surr)</span>
+</span></span><span class="line"><span class="ln"> 30</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 31</span><span class="cl"><span class="k">def</span> <span class="nf">euler_solver</span><span class="p">(</span><span class="n">dydt</span><span class="p">,</span> <span class="n">t0</span><span class="p">,</span> <span class="n">y0</span><span class="p">,</span> <span class="n">t_end</span><span class="p">,</span> <span class="n">h</span><span class="p">):</span>
+</span></span><span class="line"><span class="ln"> 32</span><span class="cl">    <span class="s2">&#34;&#34;&#34;
+</span></span></span><span class="line"><span class="ln"> 33</span><span class="cl"><span class="s2">    Solves a first-order ODE using the Euler method
+</span></span></span><span class="line"><span class="ln"> 34</span><span class="cl"><span class="s2">
+</span></span></span><span class="line"><span class="ln"> 35</span><span class="cl"><span class="s2">    Args:
+</span></span></span><span class="line"><span class="ln"> 36</span><span class="cl"><span class="s2">        dydt: The differential equation (dy/dt) as a Python function 
+</span></span></span><span class="line"><span class="ln"> 37</span><span class="cl"><span class="s2">        t0: Initial value of time
+</span></span></span><span class="line"><span class="ln"> 38</span><span class="cl"><span class="s2">        y0: Initial value of y
+</span></span></span><span class="line"><span class="ln"> 39</span><span class="cl"><span class="s2">        t_end: Final time for integration
+</span></span></span><span class="line"><span class="ln"> 40</span><span class="cl"><span class="s2">        h: Step size
+</span></span></span><span class="line"><span class="ln"> 41</span><span class="cl"><span class="s2">
+</span></span></span><span class="line"><span class="ln"> 42</span><span class="cl"><span class="s2">    Returns:
+</span></span></span><span class="line"><span class="ln"> 43</span><span class="cl"><span class="s2">        An array of y values for each time step
+</span></span></span><span class="line"><span class="ln"> 44</span><span class="cl"><span class="s2">    &#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="ln"> 45</span><span class="cl">    <span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">t0</span><span class="p">,</span> <span class="n">t_end</span><span class="o">+</span><span class="n">h</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span>  
+</span></span><span class="line"><span class="ln"> 46</span><span class="cl">    <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln"> 47</span><span class="cl">    <span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">y0</span>
+</span></span><span class="line"><span class="ln"> 48</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 49</span><span class="cl">    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">t</span><span class="p">)):</span>
+</span></span><span class="line"><span class="ln"> 50</span><span class="cl">        <span class="n">y</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">y</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">h</span> <span class="o">*</span> <span class="n">dydt</span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">],</span> <span class="n">y</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span>
+</span></span><span class="line"><span class="ln"> 51</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 52</span><span class="cl">    <span class="k">return</span> <span class="n">y</span>
+</span></span><span class="line"><span class="ln"> 53</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 54</span><span class="cl"><span class="k">def</span> <span class="nf">rk2</span><span class="p">(</span><span class="n">dydt</span><span class="p">,</span> <span class="n">t0</span><span class="p">,</span> <span class="n">y0</span><span class="p">,</span> <span class="n">t_end</span><span class="p">,</span> <span class="n">h</span><span class="p">):</span>
+</span></span><span class="line"><span class="ln"> 55</span><span class="cl">    <span class="s2">&#34;&#34;&#34;
+</span></span></span><span class="line"><span class="ln"> 56</span><span class="cl"><span class="s2">    Solves a first-order ODE using the 2nd order Runge-Kutta method
+</span></span></span><span class="line"><span class="ln"> 57</span><span class="cl"><span class="s2">
+</span></span></span><span class="line"><span class="ln"> 58</span><span class="cl"><span class="s2">    Args:
+</span></span></span><span class="line"><span class="ln"> 59</span><span class="cl"><span class="s2">        dydt: The derivative function to integrate
+</span></span></span><span class="line"><span class="ln"> 60</span><span class="cl"><span class="s2">        t0: Initial value of time
+</span></span></span><span class="line"><span class="ln"> 61</span><span class="cl"><span class="s2">        y0: Initial value of y
+</span></span></span><span class="line"><span class="ln"> 62</span><span class="cl"><span class="s2">        t_end: Final time for integration
+</span></span></span><span class="line"><span class="ln"> 63</span><span class="cl"><span class="s2">        h: Step size
+</span></span></span><span class="line"><span class="ln"> 64</span><span class="cl"><span class="s2">
+</span></span></span><span class="line"><span class="ln"> 65</span><span class="cl"><span class="s2">    Returns:
+</span></span></span><span class="line"><span class="ln"> 66</span><span class="cl"><span class="s2">        An array of y values for each time step
+</span></span></span><span class="line"><span class="ln"> 67</span><span class="cl"><span class="s2">    &#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="ln"> 68</span><span class="cl">    <span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">t0</span><span class="p">,</span> <span class="n">t_end</span><span class="o">+</span><span class="n">h</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span>  <span class="c1"># Array of time points</span>
+</span></span><span class="line"><span class="ln"> 69</span><span class="cl">    <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln"> 70</span><span class="cl">    <span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">y0</span>
+</span></span><span class="line"><span class="ln"> 71</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 72</span><span class="cl">    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">t</span><span class="p">)):</span>
+</span></span><span class="line"><span class="ln"> 73</span><span class="cl">        <span class="n">k1</span> <span class="o">=</span> <span class="n">h</span> <span class="o">*</span> <span class="n">dydt</span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">],</span> <span class="n">y</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span>
+</span></span><span class="line"><span class="ln"> 74</span><span class="cl">        <span class="n">k2</span> <span class="o">=</span> <span class="n">h</span> <span class="o">*</span> <span class="n">dydt</span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">h</span><span class="p">,</span> <span class="n">y</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">k1</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln"> 75</span><span class="cl">        <span class="n">y</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">y</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="n">k1</span> <span class="o">+</span> <span class="n">k2</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+</span></span><span class="line"><span class="ln"> 76</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 77</span><span class="cl">    <span class="k">return</span> <span class="n">y</span>
+</span></span><span class="line"><span class="ln"> 78</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 79</span><span class="cl"><span class="k">def</span> <span class="nf">rk4</span><span class="p">(</span><span class="n">dydt</span><span class="p">,</span> <span class="n">t0</span><span class="p">,</span> <span class="n">y0</span><span class="p">,</span> <span class="n">t_end</span><span class="p">,</span> <span class="n">h</span><span class="p">):</span>
+</span></span><span class="line"><span class="ln"> 80</span><span class="cl">    <span class="s2">&#34;&#34;&#34;
+</span></span></span><span class="line"><span class="ln"> 81</span><span class="cl"><span class="s2">    Solves a first-order ODE using the 4th order Runge-Kutta method
+</span></span></span><span class="line"><span class="ln"> 82</span><span class="cl"><span class="s2">
+</span></span></span><span class="line"><span class="ln"> 83</span><span class="cl"><span class="s2">    Args:
+</span></span></span><span class="line"><span class="ln"> 84</span><span class="cl"><span class="s2">        dydt: The derivative function to integrate
+</span></span></span><span class="line"><span class="ln"> 85</span><span class="cl"><span class="s2">        t0: Initial value of time
+</span></span></span><span class="line"><span class="ln"> 86</span><span class="cl"><span class="s2">        y0: Initial value of y
+</span></span></span><span class="line"><span class="ln"> 87</span><span class="cl"><span class="s2">        t_end: Final time for integration
+</span></span></span><span class="line"><span class="ln"> 88</span><span class="cl"><span class="s2">        h: Step size
+</span></span></span><span class="line"><span class="ln"> 89</span><span class="cl"><span class="s2">
+</span></span></span><span class="line"><span class="ln"> 90</span><span class="cl"><span class="s2">    Returns:
+</span></span></span><span class="line"><span class="ln"> 91</span><span class="cl"><span class="s2">        An array of y values for each time step
+</span></span></span><span class="line"><span class="ln"> 92</span><span class="cl"><span class="s2">    &#34;&#34;&#34;</span>
+</span></span><span class="line"><span class="ln"> 93</span><span class="cl">    <span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">t0</span><span class="p">,</span> <span class="n">t_end</span><span class="o">+</span><span class="n">h</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln"> 94</span><span class="cl">    <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln"> 95</span><span class="cl">    <span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">y0</span>
+</span></span><span class="line"><span class="ln"> 96</span><span class="cl">
+</span></span><span class="line"><span class="ln"> 97</span><span class="cl">    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">t</span><span class="p">)):</span>
+</span></span><span class="line"><span class="ln"> 98</span><span class="cl">        <span class="n">k1</span> <span class="o">=</span> <span class="n">dydt</span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">],</span> <span class="n">y</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span>
+</span></span><span class="line"><span class="ln"> 99</span><span class="cl">        <span class="n">k2</span> <span class="o">=</span> <span class="n">dydt</span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">h</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">y</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">k1</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">100</span><span class="cl">        <span class="n">k3</span> <span class="o">=</span> <span class="n">dydt</span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">h</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">y</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">k2</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">101</span><span class="cl">        <span class="n">k4</span> <span class="o">=</span> <span class="n">dydt</span><span class="p">(</span><span class="n">t</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">y</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">k3</span><span class="p">)</span> 
+</span></span><span class="line"><span class="ln">102</span><span class="cl">
+</span></span><span class="line"><span class="ln">103</span><span class="cl">        <span class="n">y</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">y</span><span class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="p">(</span><span class="n">k1</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">k2</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">k3</span> <span class="o">+</span> <span class="n">k4</span><span class="p">)</span> <span class="o">/</span> <span class="mi">6</span> <span class="o">*</span> <span class="n">h</span>
+</span></span><span class="line"><span class="ln">104</span><span class="cl"> 
+</span></span><span class="line"><span class="ln">105</span><span class="cl">    <span class="k">return</span> <span class="n">y</span>
+</span></span><span class="line"><span class="ln">106</span><span class="cl">
+</span></span><span class="line"><span class="ln">107</span><span class="cl"><span class="c1"># Define simulation parameters</span>
+</span></span><span class="line"><span class="ln">108</span><span class="cl"><span class="n">t0</span> <span class="o">=</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="ln">109</span><span class="cl"><span class="n">y0</span> <span class="o">=</span> <span class="mi">0</span>
+</span></span><span class="line"><span class="ln">110</span><span class="cl"><span class="n">t_end</span> <span class="o">=</span> <span class="mi">5</span>
+</span></span><span class="line"><span class="ln">111</span><span class="cl"><span class="n">h</span> <span class="o">=</span> <span class="mf">0.1</span>
+</span></span><span class="line"><span class="ln">112</span><span class="cl">
+</span></span><span class="line"><span class="ln">113</span><span class="cl"><span class="c1"># Solve using both methods</span>
+</span></span><span class="line"><span class="ln">114</span><span class="cl"><span class="n">y_euler</span> <span class="o">=</span> <span class="n">euler_solver</span><span class="p">(</span><span class="n">dydt</span><span class="p">,</span> <span class="n">t0</span><span class="p">,</span> <span class="n">y0</span><span class="p">,</span> <span class="n">t_end</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">115</span><span class="cl"><span class="n">y_rk2</span> <span class="o">=</span> <span class="n">rk2</span><span class="p">(</span><span class="n">dydt</span><span class="p">,</span> <span class="n">t0</span><span class="p">,</span> <span class="n">y0</span><span class="p">,</span> <span class="n">t_end</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">116</span><span class="cl"><span class="n">y_rk4</span> <span class="o">=</span> <span class="n">rk4</span><span class="p">(</span><span class="n">dydt</span><span class="p">,</span> <span class="n">t0</span><span class="p">,</span> <span class="n">y0</span><span class="p">,</span> <span class="n">t_end</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">117</span><span class="cl">
+</span></span><span class="line"><span class="ln">118</span><span class="cl"><span class="c1"># Get analytical solution</span>
+</span></span><span class="line"><span class="ln">119</span><span class="cl"><span class="n">t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">t0</span><span class="p">,</span> <span class="n">t_end</span><span class="o">+</span><span class="n">h</span><span class="p">,</span> <span class="n">h</span><span class="p">)</span>  <span class="c1"># Array of time points</span>
+</span></span><span class="line"><span class="ln">120</span><span class="cl"><span class="n">y_analytical</span> <span class="o">=</span> <span class="n">analytical_solution</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">121</span><span class="cl">
+</span></span><span class="line"><span class="ln">122</span><span class="cl"><span class="c1"># Calculate errors</span>
+</span></span><span class="line"><span class="ln">123</span><span class="cl"><span class="n">error_euler</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">y_euler</span> <span class="o">-</span> <span class="n">y_analytical</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">124</span><span class="cl"><span class="n">error_rk2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">y_rk2</span> <span class="o">-</span> <span class="n">y_analytical</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">125</span><span class="cl"><span class="n">error_rk4</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">y_rk4</span> <span class="o">-</span> <span class="n">y_analytical</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">126</span><span class="cl">
+</span></span><span class="line"><span class="ln">127</span><span class="cl"><span class="c1"># Plot the numerical solutions</span>
+</span></span><span class="line"><span class="ln">128</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">129</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">y_euler</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Euler&#39;</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">130</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">y_rk2</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;RK2&#39;</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">131</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">y_rk4</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;RK4&#39;</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">132</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">y_analytical</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Analytical&#39;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">)</span> 
+</span></span><span class="line"><span class="ln">133</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Time (t)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">134</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;y(t)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">135</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Numerical Solutions&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">136</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">fontsize</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">137</span><span class="cl">
+</span></span><span class="line"><span class="ln">138</span><span class="cl"><span class="c1"># Plot the errors</span>
+</span></span><span class="line"><span class="ln">139</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">140</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">error_euler</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Euler&#39;</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">141</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">error_rk2</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;RK2&#39;</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">142</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">error_rk4</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;RK4&#39;</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">143</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Time (t)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">144</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Abs Error&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">145</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s1">&#39;Absolute Errors of the Numerical Solutions&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">20</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">146</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">fontsize</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
+</span></span><span class="line"><span class="ln">147</span><span class="cl">
+</span></span><span class="line"><span class="ln">148</span><span class="cl"><span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</span></span></code></pre></div>
+</details></p>
+
+<p>Even with a relatively large step size, the 4th order method is still much better than the Euler method. In fact, we could make the step size even bigger and still have a solution that fell within some tiny tolerance.</p>
+<p>But how can we choose a good value to make this step size? And better yet, could we even possibly change the step size during our integration to make sure our result stayed within some tolerance?</p>
+<h2 id="adaptive-step-sizing">Adaptive Step Sizing<a hidden class="anchor" aria-hidden="true" href="#adaptive-step-sizing">#</a></h2>
+<p>&hellip;to be continued&hellip;</p>
+<h2 id="references">References<a hidden class="anchor" aria-hidden="true" href="#references">#</a></h2>
+<p>[1] <a href="https://ntrs.nasa.gov/api/citations/19680000653/downloads/19680000653.pdf">The Runge-Kutta Equations by Quadrature Methods. Roson J. S., 1967, <em>NASA</em>.</a></p>
+<p>[2] <a href="https://web.mit.edu/10.001/Web/Course_Notes/Differential_Equations_Notes/node5.html">Runge-Kutta Methods. <em>10.001: Numerical Solution of Ordinary Differential Equations, MIT</em></a></p>
+<p>[3] <a href="https://math.stackexchange.com/questions/528856/explanation-and-proof-of-the-4th-order-runge-kutta-method">Explanation and proof of the 4th order Runge-Kutta method</a></p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+      <li><a href="http://localhost:1313/blog/tags/runge-kutta/">Runge Kutta</a></li>
+      <li><a href="http://localhost:1313/blog/tags/ode/">Ode</a></li>
+      <li><a href="http://localhost:1313/blog/tags/numerical-integration/">Numerical Integration</a></li>
+      <li><a href="http://localhost:1313/blog/tags/rk45/">Rk45</a></li>
+      <li><a href="http://localhost:1313/blog/tags/python/">Python</a></li>
+    </ul>
+
+
+<ul class="share-buttons">
+    <li>
+        <a target="_blank" rel="noopener noreferrer" aria-label="share An Engineer&#39;s Guide to the Runge-Kutta (RK45) Method on x"
+            href="https://x.com/intent/tweet/?text=An%20Engineer%27s%20Guide%20to%20the%20Runge-Kutta%20%28RK45%29%20Method&amp;url=http%3a%2f%2flocalhost%3a1313%2fblog%2fposts%2frk45%2frk45%2f&amp;hashtags=rungekutta%2code%2cnumericalintegration%2crk45%2cpython">
+            <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve" height="30px" width="30px" fill="currentColor">
+                <path
+                    d="M512 62.554 L 512 449.446 C 512 483.97 483.97 512 449.446 512 L 62.554 512 C 28.03 512 0 483.97 0 449.446 L 0 62.554 C 0 28.03 28.029 0 62.554 0 L 449.446 0 C 483.971 0 512 28.03 512 62.554 Z M 269.951 190.75 L 182.567 75.216 L 56 75.216 L 207.216 272.95 L 63.9 436.783 L 125.266 436.783 L 235.9 310.383 L 332.567 436.783 L 456 436.783 L 298.367 228.367 L 432.367 75.216 L 371.033 75.216 Z M 127.633 110 L 164.101 110 L 383.481 400.065 L 349.5 400.065 Z" />
+            </svg>
+        </a>
+    </li>
+    <li>
+        <a target="_blank" rel="noopener noreferrer" aria-label="share An Engineer&#39;s Guide to the Runge-Kutta (RK45) Method on linkedin"
+            href="https://www.linkedin.com/shareArticle?mini=true&amp;url=http%3a%2f%2flocalhost%3a1313%2fblog%2fposts%2frk45%2frk45%2f&amp;title=An%20Engineer%27s%20Guide%20to%20the%20Runge-Kutta%20%28RK45%29%20Method&amp;summary=An%20Engineer%27s%20Guide%20to%20the%20Runge-Kutta%20%28RK45%29%20Method&amp;source=http%3a%2f%2flocalhost%3a1313%2fblog%2fposts%2frk45%2frk45%2f">
+            <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve" height="30px" width="30px" fill="currentColor">
+                <path
+                    d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-386.892,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Zm-288.985,423.278l0,-225.717l-75.04,0l0,225.717l75.04,0Zm270.539,0l0,-129.439c0,-69.333 -37.018,-101.586 -86.381,-101.586c-39.804,0 -57.634,21.891 -67.617,37.266l0,-31.958l-75.021,0c0.995,21.181 0,225.717 0,225.717l75.02,0l0,-126.056c0,-6.748 0.486,-13.492 2.474,-18.315c5.414,-13.475 17.767,-27.434 38.494,-27.434c27.135,0 38.007,20.707 38.007,51.037l0,120.768l75.024,0Zm-307.552,-334.556c-25.674,0 -42.448,16.879 -42.448,39.002c0,21.658 16.264,39.002 41.455,39.002l0.484,0c26.165,0 42.452,-17.344 42.452,-39.002c-0.485,-22.092 -16.241,-38.954 -41.943,-39.002Z" />
+            </svg>
+        </a>
+    </li>
+    <li>
+        <a target="_blank" rel="noopener noreferrer" aria-label="share An Engineer&#39;s Guide to the Runge-Kutta (RK45) Method on reddit"
+            href="https://reddit.com/submit?url=http%3a%2f%2flocalhost%3a1313%2fblog%2fposts%2frk45%2frk45%2f&title=An%20Engineer%27s%20Guide%20to%20the%20Runge-Kutta%20%28RK45%29%20Method">
+            <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve" height="30px" width="30px" fill="currentColor">
+                <path
+                    d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-386.892,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Zm-3.446,265.638c0,-22.964 -18.616,-41.58 -41.58,-41.58c-11.211,0 -21.361,4.457 -28.841,11.666c-28.424,-20.508 -67.586,-33.757 -111.204,-35.278l18.941,-89.121l61.884,13.157c0.756,15.734 13.642,28.29 29.56,28.29c16.407,0 29.706,-13.299 29.706,-29.701c0,-16.403 -13.299,-29.702 -29.706,-29.702c-11.666,0 -21.657,6.792 -26.515,16.578l-69.105,-14.69c-1.922,-0.418 -3.939,-0.042 -5.585,1.036c-1.658,1.073 -2.811,2.761 -3.224,4.686l-21.152,99.438c-44.258,1.228 -84.046,14.494 -112.837,35.232c-7.468,-7.164 -17.589,-11.591 -28.757,-11.591c-22.965,0 -41.585,18.616 -41.585,41.58c0,16.896 10.095,31.41 24.568,37.918c-0.639,4.135 -0.99,8.328 -0.99,12.576c0,63.977 74.469,115.836 166.33,115.836c91.861,0 166.334,-51.859 166.334,-115.836c0,-4.218 -0.347,-8.387 -0.977,-12.493c14.564,-6.47 24.735,-21.034 24.735,-38.001Zm-119.474,108.193c-20.27,20.241 -59.115,21.816 -70.534,21.816c-11.428,0 -50.277,-1.575 -70.522,-21.82c-3.007,-3.008 -3.007,-7.882 0,-10.889c3.003,-2.999 7.882,-3.003 10.885,0c12.777,12.781 40.11,17.317 59.637,17.317c19.522,0 46.86,-4.536 59.657,-17.321c3.016,-2.999 7.886,-2.995 10.885,0.008c3.008,3.011 3.003,7.882 -0.008,10.889Zm-5.23,-48.781c-16.373,0 -29.701,-13.324 -29.701,-29.698c0,-16.381 13.328,-29.714 29.701,-29.714c16.378,0 29.706,13.333 29.706,29.714c0,16.374 -13.328,29.698 -29.706,29.698Zm-160.386,-29.702c0,-16.381 13.328,-29.71 29.714,-29.71c16.369,0 29.689,13.329 29.689,29.71c0,16.373 -13.32,29.693 -29.689,29.693c-16.386,0 -29.714,-13.32 -29.714,-29.693Z" />
+            </svg>
+        </a>
+    </li>
+    <li>
+        <a target="_blank" rel="noopener noreferrer" aria-label="share An Engineer&#39;s Guide to the Runge-Kutta (RK45) Method on facebook"
+            href="https://facebook.com/sharer/sharer.php?u=http%3a%2f%2flocalhost%3a1313%2fblog%2fposts%2frk45%2frk45%2f">
+            <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve" height="30px" width="30px" fill="currentColor">
+                <path
+                    d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-106.468,0l0,-192.915l66.6,0l12.672,-82.621l-79.272,0l0,-53.617c0,-22.603 11.073,-44.636 46.58,-44.636l36.042,0l0,-70.34c0,0 -32.71,-5.582 -63.982,-5.582c-65.288,0 -107.96,39.569 -107.96,111.204l0,62.971l-72.573,0l0,82.621l72.573,0l0,192.915l-191.104,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Z" />
+            </svg>
+        </a>
+    </li>
+    <li>
+        <a target="_blank" rel="noopener noreferrer" aria-label="share An Engineer&#39;s Guide to the Runge-Kutta (RK45) Method on whatsapp"
+            href="https://api.whatsapp.com/send?text=An%20Engineer%27s%20Guide%20to%20the%20Runge-Kutta%20%28RK45%29%20Method%20-%20http%3a%2f%2flocalhost%3a1313%2fblog%2fposts%2frk45%2frk45%2f">
+            <svg version="1.1" viewBox="0 0 512 512" xml:space="preserve" height="30px" width="30px" fill="currentColor">
+                <path
+                    d="M449.446,0c34.525,0 62.554,28.03 62.554,62.554l0,386.892c0,34.524 -28.03,62.554 -62.554,62.554l-386.892,0c-34.524,0 -62.554,-28.03 -62.554,-62.554l0,-386.892c0,-34.524 28.029,-62.554 62.554,-62.554l386.892,0Zm-58.673,127.703c-33.842,-33.881 -78.847,-52.548 -126.798,-52.568c-98.799,0 -179.21,80.405 -179.249,179.234c-0.013,31.593 8.241,62.428 23.927,89.612l-25.429,92.884l95.021,-24.925c26.181,14.28 55.659,21.807 85.658,21.816l0.074,0c98.789,0 179.206,-80.413 179.247,-179.243c0.018,-47.895 -18.61,-92.93 -52.451,-126.81Zm-126.797,275.782l-0.06,0c-26.734,-0.01 -52.954,-7.193 -75.828,-20.767l-5.441,-3.229l-56.386,14.792l15.05,-54.977l-3.542,-5.637c-14.913,-23.72 -22.791,-51.136 -22.779,-79.287c0.033,-82.142 66.867,-148.971 149.046,-148.971c39.793,0.014 77.199,15.531 105.329,43.692c28.128,28.16 43.609,65.592 43.594,105.4c-0.034,82.149 -66.866,148.983 -148.983,148.984Zm81.721,-111.581c-4.479,-2.242 -26.499,-13.075 -30.604,-14.571c-4.105,-1.495 -7.091,-2.241 -10.077,2.241c-2.986,4.483 -11.569,14.572 -14.182,17.562c-2.612,2.988 -5.225,3.364 -9.703,1.12c-4.479,-2.241 -18.91,-6.97 -36.017,-22.23c-13.314,-11.876 -22.304,-26.542 -24.916,-31.026c-2.612,-4.484 -0.279,-6.908 1.963,-9.14c2.016,-2.007 4.48,-5.232 6.719,-7.847c2.24,-2.615 2.986,-4.484 4.479,-7.472c1.493,-2.99 0.747,-5.604 -0.374,-7.846c-1.119,-2.241 -10.077,-24.288 -13.809,-33.256c-3.635,-8.733 -7.327,-7.55 -10.077,-7.688c-2.609,-0.13 -5.598,-0.158 -8.583,-0.158c-2.986,0 -7.839,1.121 -11.944,5.604c-4.105,4.484 -15.675,15.32 -15.675,37.364c0,22.046 16.048,43.342 18.287,46.332c2.24,2.99 31.582,48.227 76.511,67.627c10.685,4.615 19.028,7.371 25.533,9.434c10.728,3.41 20.492,2.929 28.209,1.775c8.605,-1.285 26.499,-10.833 30.231,-21.295c3.732,-10.464 3.732,-19.431 2.612,-21.298c-1.119,-1.869 -4.105,-2.99 -8.583,-5.232Z" />
+            </svg>
+        </a>
+    </li>
+    <li>
+        <a target="_blank" rel="noopener noreferrer" aria-label="share An Engineer&#39;s Guide to the Runge-Kutta (RK45) Method on telegram"
+            href="https://telegram.me/share/url?text=An%20Engineer%27s%20Guide%20to%20the%20Runge-Kutta%20%28RK45%29%20Method&amp;url=http%3a%2f%2flocalhost%3a1313%2fblog%2fposts%2frk45%2frk45%2f">
+            <svg version="1.1" xml:space="preserve" viewBox="2 2 28 28" height="30px" width="30px" fill="currentColor">
+                <path
+                    d="M26.49,29.86H5.5a3.37,3.37,0,0,1-2.47-1,3.35,3.35,0,0,1-1-2.47V5.48A3.36,3.36,0,0,1,3,3,3.37,3.37,0,0,1,5.5,2h21A3.38,3.38,0,0,1,29,3a3.36,3.36,0,0,1,1,2.46V26.37a3.35,3.35,0,0,1-1,2.47A3.38,3.38,0,0,1,26.49,29.86Zm-5.38-6.71a.79.79,0,0,0,.85-.66L24.73,9.24a.55.55,0,0,0-.18-.46.62.62,0,0,0-.41-.17q-.08,0-16.53,6.11a.59.59,0,0,0-.41.59.57.57,0,0,0,.43.52l4,1.24,1.61,4.83a.62.62,0,0,0,.63.43.56.56,0,0,0,.4-.17L16.54,20l4.09,3A.9.9,0,0,0,21.11,23.15ZM13.8,20.71l-1.21-4q8.72-5.55,8.78-5.55c.15,0,.23,0,.23.16a.18.18,0,0,1,0,.06s-2.51,2.3-7.52,6.8Z" />
+            </svg>
+        </a>
+    </li>
+    <li>
+        <a target="_blank" rel="noopener noreferrer" aria-label="share An Engineer&#39;s Guide to the Runge-Kutta (RK45) Method on ycombinator"
+            href="https://news.ycombinator.com/submitlink?t=An%20Engineer%27s%20Guide%20to%20the%20Runge-Kutta%20%28RK45%29%20Method&u=http%3a%2f%2flocalhost%3a1313%2fblog%2fposts%2frk45%2frk45%2f">
+            <svg version="1.1" xml:space="preserve" width="30px" height="30px" viewBox="0 0 512 512" fill="currentColor"
+                xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape">
+                <path
+                    d="M449.446 0C483.971 0 512 28.03 512 62.554L512 449.446C512 483.97 483.97 512 449.446 512L62.554 512C28.03 512 0 483.97 0 449.446L0 62.554C0 28.03 28.029 0 62.554 0L449.446 0ZM183.8767 87.9921H121.8427L230.6673 292.4508V424.0079H281.3328V292.4508L390.1575 87.9921H328.1233L256 238.2489z" />
+            </svg>
+        </a>
+    </li>
+</ul>
+
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2024 <a href="http://localhost:1313/blog/">simmeon&#39;s blog</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+<script>
+    document.querySelectorAll('pre > code').forEach((codeblock) => {
+        const container = codeblock.parentNode.parentNode;
+
+        const copybutton = document.createElement('button');
+        copybutton.classList.add('copy-code');
+        copybutton.innerHTML = 'copy';
+
+        function copyingDone() {
+            copybutton.innerHTML = 'copied!';
+            setTimeout(() => {
+                copybutton.innerHTML = 'copy';
+            }, 2000);
+        }
+
+        copybutton.addEventListener('click', (cb) => {
+            if ('clipboard' in navigator) {
+                navigator.clipboard.writeText(codeblock.textContent);
+                copyingDone();
+                return;
+            }
+
+            const range = document.createRange();
+            range.selectNodeContents(codeblock);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            try {
+                document.execCommand('copy');
+                copyingDone();
+            } catch (e) { };
+            selection.removeRange(range);
+        });
+
+        if (container.classList.contains("highlight")) {
+            container.appendChild(copybutton);
+        } else if (container.parentNode.firstChild == container) {
+            
+        } else if (codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.nodeName == "TABLE") {
+            
+            codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.appendChild(copybutton);
+        } else {
+            
+            codeblock.parentNode.appendChild(copybutton);
+        }
+    });
+</script>
+</body>
+
+</html>

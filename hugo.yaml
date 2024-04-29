@@ -66,6 +66,7 @@ params:
   ShowToc: true
   # comments: false
   images: ["images/papermod-cover.png"]
+  math: true
 
   profileMode:
     enabled: false
@@ -82,7 +83,7 @@ params:
 
   homeInfoParams:
     Title: "simmeon's blog"
-    Content: "Hey" 
+    Content: " " 
       
   # socialIcons:
   #   - name: github
