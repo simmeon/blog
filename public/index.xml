@@ -11,14 +11,14 @@
     </image>
     <generator>Hugo -- 0.123.3</generator>
     <language>en</language>
-    <lastBuildDate>Sun, 28 Apr 2024 07:08:00 +1200</lastBuildDate>
+    <lastBuildDate>Sat, 18 May 2024 00:00:00 +0000</lastBuildDate>
     <atom:link href="http://localhost:1313/blog/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>An Engineer&#39;s Guide to the Runge-Kutta (RK45) Method</title>
       <link>http://localhost:1313/blog/posts/rk45/rk45/</link>
-      <pubDate>Sun, 28 Apr 2024 07:08:00 +1200</pubDate>
+      <pubDate>Sat, 18 May 2024 00:00:00 +0000</pubDate>
       <guid>http://localhost:1313/blog/posts/rk45/rk45/</guid>
-      <description>Understanding how to apply the RK45 method to engineering problems.</description>
+      <description>Understanding what the RK45 method is, a complete derivation, and applying it to engineering problems.</description>
     </item>
   </channel>
 </rss>
