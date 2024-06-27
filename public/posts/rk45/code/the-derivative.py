@@ -46,4 +46,6 @@ for i in range(len(h)):
 # Show plot
 plt.title("Estimating a function by using the derivative", fontsize=20)
 plt.legend(loc='lower right', fontsize=10)
+plt.xlabel('x', fontsize=15)
+plt.ylabel('y', fontsize=15)
 plt.show()

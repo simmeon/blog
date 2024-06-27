@@ -143,7 +143,7 @@ def rk45_solver(dydt, t0, y0, t_end, tol):
 # Define orbit parameters
 mu = 398600.4415
 rp = 6678
-e = 0.9
+e = 0.6
 a = rp/(1-e)
 T = 2*np.pi*np.sqrt(a**3/mu)
 
@@ -151,7 +151,7 @@ T = 2*np.pi*np.sqrt(a**3/mu)
 t0 = 0
 x0 = np.array([rp, 0, 0, np.sqrt(2*mu/rp - mu/a)])
 t_end = T
-tol = 1e-12
+tol = 1e-6
 
 # Numerically integrate
 t_rk45, y_rk45, local_error = rk45_solver(dxdt, t0, x0, t_end, tol)

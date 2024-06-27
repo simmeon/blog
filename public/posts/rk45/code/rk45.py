@@ -40,7 +40,6 @@ B = np.array([
 
 # Weighting for each derivative in the approximation, w in notation
 W = np.array([35/384, 0, 500/1113, 125/192, -2187/6784, 11/84, 0])
-#W = np.array([5179/57600, 0, 7571/16695, 393/640, -92097/339200, 187/2100, 1/40])
 
 # Coefficients for error calculation
 E = np.array([-71/57600, 0, 71/16695, -71/1920, 17253/339200, -22/525, 1/40])
@@ -141,8 +140,8 @@ def rk45_solver(dydt, t0, y0, t_end, tol):
 # Define simulation parameters
 t0 = 0
 y0 = 0
-t_end = 2
-tol = 1e-6
+t_end = 3
+tol = 1e-12
 
 # Numerically integrate
 t_rk45, y_rk45, local_error = rk45_solver(dydt, t0, y0, t_end, tol)

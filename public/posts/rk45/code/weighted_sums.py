@@ -16,7 +16,7 @@ def f(t):
     return t**3 -2*t**2 - t + 3
 
 # Perform a weighted sum approximation
-N = 10  # higher number of samples, N, gives a better approximation
+N = 1000  # higher number of samples, N, gives a better approximation
 sum = 0
 t0 = 0
 h = 2
