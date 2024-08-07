@@ -2,7 +2,7 @@
 Implementing a complete RK45 algorithm.
 
 Created by: simmeon
-Last Modified: 19/05/24
+Last Modified: 27/06/24
 License: MIT
 
 '''
@@ -47,7 +47,8 @@ E = np.array([-71/57600, 0, 71/16695, -71/1920, 17253/339200, -22/525, 1/40])
 # ------------------------------------------------------------------ #
 
 # Define a function to take a single RK45 step
-# To improve efficiency, k7 can be reused as k1 in the following step
+# This version reuses k7 to cut down on computation
+prev_k7 = np.nan
 def rk45_step(dydt, t0, y0, h):
     """
     Takes a single 5th order integration step and returns the 
@@ -64,18 +65,18 @@ def rk45_step(dydt, t0, y0, h):
 
     """
 
-    k1 = h * dydt(t0, y0)
-    k2 = h * dydt(t0 + A[1] * h, y0 + B[1][0]*k1)
-    k3 = h * dydt(t0 + A[2] * h, y0 + B[2][0]*k1 + B[2][1]*k2)
-    k4 = h * dydt(t0 + A[3] * h, y0 + B[3][0]*k1 + B[3][1]*k2 + B[3][2]*k3)
-    k5 = h * dydt(t0 + A[4] * h, y0 + B[4][0]*k1 + B[4][1]*k2 + B[4][2]*k3 + B[4][3]*k4)
-    k6 = h * dydt(t0 + A[5] * h, y0 + B[5][0]*k1 + B[5][1]*k2 + B[5][2]*k3 + B[5][3]*k4 + B[5][4]*k5)
+    k1 = dydt(t0, y0)
+    k2 = dydt(t0 + A[1] * h, y0 + B[1][0]*k1*h)
+    k3 = dydt(t0 + A[2] * h, y0 + B[2][0]*k1*h + B[2][1]*k2*h)
+    k4 = dydt(t0 + A[3] * h, y0 + B[3][0]*k1*h + B[3][1]*k2*h + B[3][2]*k3*h)
+    k5 = dydt(t0 + A[4] * h, y0 + B[4][0]*k1*h + B[4][1]*k2*h + B[4][2]*k3*h + B[4][3]*k4*h)
+    k6 = dydt(t0 + A[5] * h, y0 + B[5][0]*k1*h + B[5][1]*k2*h + B[5][2]*k3*h + B[5][3]*k4*h + B[5][4]*k5*h)
 
-    y = y0 + W[0]*k1 + W[1]*k2 + W[2]*k3 + W[3]*k4 + W[4]*k5 + W[5]*k6
+    y = y0 + h * ( W[0]*k1 + W[1]*k2 + W[2]*k3 + W[3]*k4 + W[4]*k5 + W[5]*k6 )
 
-    k7 = h * dydt(t0 + A[6] * h, y)
+    k7 = dydt(t0 + A[6] * h, y)
 
-    error = np.abs( E[0]*k1 + E[1]*k2 + E[2]*k3 + E[3]*k4 + E[4]*k5 + E[5]*k6 + E[6]*k7 )
+    error = h * np.abs( E[0]*k1 + E[1]*k2 + E[2]*k3 + E[3]*k4 + E[4]*k5 + E[5]*k6 + E[6]*k7 )
 
     return y, error
 
@@ -140,8 +141,8 @@ def rk45_solver(dydt, t0, y0, t_end, tol):
 # Define simulation parameters
 t0 = 0
 y0 = 0
-t_end = 3
-tol = 1e-12
+t_end = 2
+tol = 1e-06
 
 # Numerically integrate
 t_rk45, y_rk45, local_error = rk45_solver(dydt, t0, y0, t_end, tol)

@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
-    <title>simmeon&#39;s blog</title>
-    <link>http://localhost:1313/blog/</link>
-    <description>Recent content on simmeon&#39;s blog</description>
+    <title>Interactive on simmeon&#39;s blog</title>
+    <link>http://localhost:1313/blog/tags/interactive/</link>
+    <description>Recent content in Interactive on simmeon&#39;s blog</description>
     <image>
       <title>simmeon&#39;s blog</title>
       <url>http://localhost:1313/blog/images/papermod-cover.png</url>
@@ -12,20 +12,13 @@
     <generator>Hugo -- 0.123.3</generator>
     <language>en</language>
     <lastBuildDate>Wed, 07 Aug 2024 00:00:00 +0000</lastBuildDate>
-    <atom:link href="http://localhost:1313/blog/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="http://localhost:1313/blog/tags/interactive/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>But Why Quaternions Instead of Euler Angles?</title>
       <link>http://localhost:1313/blog/posts/quaternionsvseuler/quaternionsvseuler/</link>
       <pubDate>Wed, 07 Aug 2024 00:00:00 +0000</pubDate>
       <guid>http://localhost:1313/blog/posts/quaternionsvseuler/quaternionsvseuler/</guid>
-      <description>An interactive exploration of quaternions and why we might want to use them.</description>
-    </item>
-    <item>
-      <title>An Engineer&#39;s Guide to the Runge-Kutta (RK45) Method</title>
-      <link>http://localhost:1313/blog/posts/rk45/rk45/</link>
-      <pubDate>Sat, 18 May 2024 00:00:00 +0000</pubDate>
-      <guid>http://localhost:1313/blog/posts/rk45/rk45/</guid>
-      <description>Understanding what the RK45 method is, a complete derivation, and applying it to engineering problems.</description>
+      <description>Desc Text.</description>
     </item>
   </channel>
 </rss>
