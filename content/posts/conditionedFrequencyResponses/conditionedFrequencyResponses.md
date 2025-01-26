@@ -3,7 +3,7 @@ title: 'Conditioned Frequency Responses'
 date: '2025-01-24T19:36:10+13:00'
 # weight: 1
 # aliases: ["/first"]
-tags: ["frequency response", "control", "system identification", "aerospace"]
+tags: ["frequency response", "control", "system identification", "aerospace", "signal processing"]
 author: "simmeon"
 # author: ["Me", "You"] # multiple authors
 showToc: true
@@ -1079,7 +1079,12 @@ $$
     \end{bmatrix}
 $$
 
+This idea can be extended to an arbitrary number of inputs.
 
 ## References
 
 [1] [What is Autocorrelation?](https://www.youtube.com/watch?v=hOvE8puBZK4&t=812s)
+
+[2] Bendat, Julius S., and Allan G. Piersol. Random data: analysis and measurement procedures. John Wiley & Sons, 2011.
+
+[3] Tischler, Mark B., and Robert K. Remple. Aircraft and rotorcraft system identification. Reston, VA: American Institute of Aeronautics and Astronautics, 2012.
