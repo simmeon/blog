@@ -10,7 +10,7 @@
 <meta name="description" content="Understanding what the RK45 method is, a complete derivation, and applying it to engineering problems.">
 <meta name="author" content="simmeon">
 <link rel="canonical" href="https://simmeon.github.io/blog/post/rk45.md">
-<link crossorigin="anonymous" href="/blog/assets/css/stylesheet.4599eadb9eb2ad3d0a8d6827b41a8fda8f2f4af226b63466c09c5fddbc8706b7.css" integrity="sha256-RZnq256yrT0KjWgntBqP2o8vSvImtjRmwJxf3byHBrc=" rel="preload stylesheet" as="style">
+<link crossorigin="anonymous" href="/blog/assets/css/stylesheet.54405a410796490bc874ab6181fac9b675753cc2b91375d8f882566459eca428.css" integrity="sha256-VEBaQQeWSQvIdKthgfrJtnV1PMK5E3XY&#43;IJWZFnspCg=" rel="preload stylesheet" as="style">
 <link rel="icon" href="http://localhost:1313/blog/favicon.ico">
 <link rel="icon" type="image/png" sizes="16x16" href="http://localhost:1313/blog/favicon-16x16.png">
 <link rel="icon" type="image/png" sizes="32x32" href="http://localhost:1313/blog/favicon-32x32.png">
@@ -558,7 +558,7 @@ $$</p>
 <p>Let&rsquo;s try do that with Newton&rsquo;s cooling law and see how the result compares to the analytical solution. <strong>Figure 3</strong> shows what that would look like.</p>
 <figure class="align-center ">
     <img loading="lazy" src="../img/euler_method.png#center"
-         alt="Figure 3: Analytical and Euler method solutions to Newton&amp;rsquo;s cooling law. Tsurr = 20 C, k = 1."/> <figcaption>
+         alt="Figure 3: Analytical and Euler method solutions to Newton&rsquo;s cooling law. Tsurr = 20 C, k = 1."/> <figcaption>
             <p><strong>Figure 3</strong>: Analytical and Euler method solutions to Newton&rsquo;s cooling law. T<sub>surr</sub> = 20 C, k = 1.</p>
         </figcaption>
 </figure>
@@ -1675,7 +1675,7 @@ just decrease it where we need to.</p>
 <p>In this example, we could try switching to a smaller step size (say, \( h = 0.01 \)) after \( t = 1 \) when our solution starts getting less accurate. Doing this gives the solution shown in <strong>Figure 8</strong>.</p>
 <figure class="align-center ">
     <img loading="lazy" src="../img/two_step_sizes.png#center"
-         alt="Figure 8: Euler method solution and error using two step sizes: t &amp;lt;= 1, h = 0.05; t &amp;gt; 1, h = 0.01"/> <figcaption>
+         alt="Figure 8: Euler method solution and error using two step sizes: t &lt;= 1, h = 0.05; t &gt; 1, h = 0.01"/> <figcaption>
             <p><strong>Figure 8</strong>: Euler method solution and error using two step sizes: t &lt;= 1, h = 0.05; t &gt; 1, h = 0.01</p>
         </figcaption>
 </figure>
@@ -1874,26 +1874,26 @@ just decrease it where we need to.</p>
 <p>This has made our solution around an order of magnitude more accurate. But how much computational complexity have we saved compared to just solving the entire time interval with the smaller step size? We can summarize this in <strong>Table 1</strong>.</p>
 <p><strong>Table 1</strong></p>
 <table>
-<thead>
-<tr>
-<th>Step size</th>
-<th style="text-align:right">Number of iteration steps</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>\( h = 0.05 \)</td>
-<td style="text-align:right">41</td>
-</tr>
-<tr>
-<td>\( t \leq 1, h = 0.05 \\ t&gt;1, h = 0.01\)</td>
-<td style="text-align:right">122</td>
-</tr>
-<tr>
-<td>\( h = 0.01 \)</td>
-<td style="text-align:right">201</td>
-</tr>
-</tbody>
+  <thead>
+      <tr>
+          <th>Step size</th>
+          <th style="text-align: right">Number of iteration steps</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>\( h = 0.05 \)</td>
+          <td style="text-align: right">41</td>
+      </tr>
+      <tr>
+          <td>\( t \leq 1, h = 0.05 \\ t&gt;1, h = 0.01\)</td>
+          <td style="text-align: right">122</td>
+      </tr>
+      <tr>
+          <td>\( h = 0.01 \)</td>
+          <td style="text-align: right">201</td>
+      </tr>
+  </tbody>
 </table>
 <p>So we are saving a significant amount of computation compared to making the whole interval have a smaller step size.</p>
 <p>Choosing to make the step size smaller at \( t = 1 \) was very arbitrary. We could also change the step size in more places &ndash; maybe making it even bigger initially and even smaller for \( t &gt; 1.5 \). We should come up with a smart way of choosing when and how to change the step size.</p>
@@ -3913,10 +3913,10 @@ $$</p>
       <li><a href="http://localhost:1313/blog/tags/python/">Python</a></li>
     </ul>
 <nav class="paginav">
-  <a class="prev" href="http://localhost:1313/blog/posts/quaternionsvseuler/quaternionsvseuler/">
+  <a class="prev" href="http://localhost:1313/blog/posts/conditionedfrequencyresponses/conditionedfrequencyresponses/">
     <span class="title">« Prev</span>
     <br>
-    <span>But Why Rotate With Quaternions?</span>
+    <span>Conditioned Frequency Responses</span>
   </a>
 </nav>
 
@@ -3993,7 +3993,7 @@ $$</p>
     </main>
     
 <footer class="footer">
-        <span>&copy; 2024 <a href="http://localhost:1313/blog/">simmeon&#39;s blog</a></span> · 
+        <span>&copy; 2025 <a href="http://localhost:1313/blog/">simmeon&#39;s blog</a></span> · 
 
     <span>
         Powered by

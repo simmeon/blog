@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>System Identification on simmeon&#39;s blog</title>
+    <link>http://localhost:1313/blog/tags/system-identification/</link>
+    <description>Recent content in System Identification on simmeon&#39;s blog</description>
+    <image>
+      <title>simmeon&#39;s blog</title>
+      <url>http://localhost:1313/blog/images/papermod-cover.png</url>
+      <link>http://localhost:1313/blog/images/papermod-cover.png</link>
+    </image>
+    <generator>Hugo -- 0.136.5</generator>
+    <language>en</language>
+    <lastBuildDate>Fri, 24 Jan 2025 19:36:10 +1300</lastBuildDate>
+    <atom:link href="http://localhost:1313/blog/tags/system-identification/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Conditioned Frequency Responses</title>
+      <link>http://localhost:1313/blog/posts/conditionedfrequencyresponses/conditionedfrequencyresponses/</link>
+      <pubDate>Fri, 24 Jan 2025 19:36:10 +1300</pubDate>
+      <guid>http://localhost:1313/blog/posts/conditionedfrequencyresponses/conditionedfrequencyresponses/</guid>
+      <description>Understanding how to find frequency responses when there are multiple correlated inputs present, with a focus on system identification.</description>
+    </item>
+  </channel>
+</rss>

@@ -67,6 +67,7 @@ params:
   # comments: false
   images: ["images/papermod-cover.png"]
   math: true
+  social: true
 
   profileMode:
     enabled: false

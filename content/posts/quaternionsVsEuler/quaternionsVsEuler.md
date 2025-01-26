@@ -12,7 +12,7 @@ draft: true
 hidemeta: false
 comments: false
 description: "An interactive exploration of Euler angles, quaternions, and what rotation looks like."
-canonicalURL: "https://simmeon.github.io/blog/post/quaternionsVsEuler.md"
+canonicalURL: "https://simmeon.github.io/blog/posts/quaternionsVsEuler.md"
 disableHLJS: true # to disable highlightjs
 disableShare: false
 disableHLJS: false

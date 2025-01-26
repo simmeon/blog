@@ -2,32 +2,29 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>http://localhost:1313/blog/posts/quaternionsvseuler/quaternionsvseuler/</loc>
-    <lastmod>2024-08-07T00:00:00+00:00</lastmod>
+    <loc>http://localhost:1313/blog/tags/aerospace/</loc>
+    <lastmod>2025-01-24T19:36:10+13:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blog/tags/euler/</loc>
-    <lastmod>2024-08-07T00:00:00+00:00</lastmod>
+    <loc>http://localhost:1313/blog/posts/conditionedfrequencyresponses/conditionedfrequencyresponses/</loc>
+    <lastmod>2025-01-24T19:36:10+13:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blog/tags/interactive/</loc>
-    <lastmod>2024-08-07T00:00:00+00:00</lastmod>
+    <loc>http://localhost:1313/blog/tags/control/</loc>
+    <lastmod>2025-01-24T19:36:10+13:00</lastmod>
   </url><url>
-    <loc>http://localhost:1313/blog/tags/orientation/</loc>
-    <lastmod>2024-08-07T00:00:00+00:00</lastmod>
+    <loc>http://localhost:1313/blog/tags/frequency-response/</loc>
+    <lastmod>2025-01-24T19:36:10+13:00</lastmod>
   </url><url>
     <loc>http://localhost:1313/blog/posts/</loc>
-    <lastmod>2024-08-07T00:00:00+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:1313/blog/tags/quaternions/</loc>
-    <lastmod>2024-08-07T00:00:00+00:00</lastmod>
-  </url><url>
-    <loc>http://localhost:1313/blog/tags/rotation/</loc>
-    <lastmod>2024-08-07T00:00:00+00:00</lastmod>
+    <lastmod>2025-01-24T19:36:10+13:00</lastmod>
   </url><url>
     <loc>http://localhost:1313/blog/</loc>
-    <lastmod>2024-08-07T00:00:00+00:00</lastmod>
+    <lastmod>2025-01-24T19:36:10+13:00</lastmod>
+  </url><url>
+    <loc>http://localhost:1313/blog/tags/system-identification/</loc>
+    <lastmod>2025-01-24T19:36:10+13:00</lastmod>
   </url><url>
     <loc>http://localhost:1313/blog/tags/</loc>
-    <lastmod>2024-08-07T00:00:00+00:00</lastmod>
+    <lastmod>2025-01-24T19:36:10+13:00</lastmod>
   </url><url>
     <loc>http://localhost:1313/blog/posts/rk45/rk45/</loc>
     <lastmod>2024-05-18T00:00:00+00:00</lastmod>
