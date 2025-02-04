@@ -1,6 +1,6 @@
 ---
 title: 'Conditioned Frequency Responses'
-date: '2025-01-24T19:36:10+13:00'
+date: '2025-02-04T19:36:10+13:00'
 # weight: 1
 # aliases: ["/first"]
 tags: ["frequency response", "control", "system identification", "aerospace", "signal processing"]
@@ -11,7 +11,7 @@ TocOpen: false
 draft: false
 hidemeta: false
 comments: false
-description: "Understanding how to find frequency responses when there are multiple correlated inputs present, with a focus on system identification."
+description: "Understanding how to find frequency responses when there are multiple correlated inputs present."
 canonicalURL: "https://simmeon.github.io/blog/post/"
 disableHLJS: true # to disable highlightjs
 disableShare: false
@@ -46,21 +46,180 @@ editPost:
 {{</ math.inline >}}
 
 
-## What is this all about?
+## An example
 
-A frequency response gives information about how an output of a system will react to a sinusoidal input at different frequencies. They are very useful in analysing the stability and behaviour of systems. They are also central to frequency-domain system identification methods, which is what we will be interested in using them for. 
+Imagine we're looking into a system that has the following sort of form
 
-In general, for some system input \\( x(t) \\) and output \\( y(t) \\), the frequency response is
+$$
+    \ddot{y}(t) + c \dot{y}(t) + k y(t) = x_{1}(t) + x_{2}(t)
+$$
+
+where \\( y \\) is our output and there are two inputs, \\( x_{1} \\) and \\( x_{2} \\). For the purpose 
+of this example, we don't know exactly what \\( c \\) and \\( k \\) are - the specific system we have is 
+a bit of a mystery. What we can do, however, is measure the inputs we put into the system and 
+then measure the output we get.
+
+This is useful because we know that the frequency response of a system is 
 
 $$
     H(f) = \frac{Y(f)}{X(f)}
 $$
 
-where \\( X(f) \\) and \\( Y(f) \\) are the Fourier transforms of the input and output.
+for some output \\( y \\) and input \\( x \\). We know that we can get lots of useful information 
+about how our system behaves from the frequency response - things like where natural frequencies are 
+and whether the system will be stable at certain frequencies.
 
-But this is not always true. In systems where there are *multiple partially correlated inputs* and those inputs all affect the output, we have to be more careful about how we calculate these frequency responses. In other words, we have to *condition* the frequency responses to remove these effects.
+So let's Fourier transform our input and output data and have a look at the frequency responses
+we get. And just to compare, let's also plot the analytical frequency responses just to show that we 
+did it right. 
 
-Throughout this post, we will develop a very useful way to calculate frequency responses (especially for system identification) using spectral density functions. Then, we will apply this method in single-input single-output (SISO) systems. We will build up some theory on how to describe these correlation effects in multiple-input single-output (MISO) systems and see why the above equation for frequency responses is lacking. Finally, we will discuss how to change our method so we are still able to find the frequency responses we want.
+{{< figure src="../img/intro-example.png" align=center caption="**Figure 1**: A simple two-input, one-output linear system to introduce the problems that arise with partially correlated inputs." >}}
+
+{{< collapse summary="Figure 1 code" >}}
+
+```python {linenos=true}
+'''
+A simple two-input (partically correlated), one-output linear system to introduce 
+the problems that arise with partially correlated inputs.
+
+Last Modified: 2025-02-04
+License: MIT
+
+'''
+
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.signal import chirp, zoom_fft
+from scipy.integrate import odeint
+
+plt.style.use('https://github.com/dhaitz/matplotlib-stylesheets/raw/master/pitayasmoothie-dark.mplstyle')
+
+
+pi = np.pi
+
+# ------------------------------------------------------------------------------
+
+# Define and simulate system
+
+# System coefficienets (this is secret don't look...)
+a = 2
+b = 3
+c = 2
+d = 0.5
+k = (2 * pi * 2)**2 # ~ 158
+
+# Simulation properties
+T = 50
+fs = 1000
+N = T * fs
+t = np.linspace(0, T, N, endpoint=False)
+
+# Define input x1: freq sweep
+fmin = 0.1
+fmax = 5
+x1 = chirp(t, fmin, T, fmax)
+
+# Define input x2: partially correlated
+x2_uc = np.random.normal(0, 1, N)
+x2 = d * x1 + x2_uc
+
+# Define state derivative
+def dydt(y, t):
+    u1 = x1[int(t * fs) - 1]
+    u2 = x2[int(t * fs) - 1]
+    return np.array([y[1], - k * y[0] - c * y[1] + a * u1 + b * u2])
+    
+# Simulate system
+y0 = [0, 0]
+y = odeint(dydt, y0, t)
+y = y[:,0]
+
+# ------------------------------------------------------------------------------
+
+# Frequency Responses
+
+# Analytical frequency response
+f = np.logspace(np.log10(fmin), np.log10(fmax), N)
+s = 1.0j * 2 * pi * f
+
+H1y = a / (s**2 + c * s + k)
+H2y = b / (s**2 + c * s + k)
+
+# Estimated response
+Y = zoom_fft(y, [fmin, fmax], m=N, fs=fs)
+X1 = zoom_fft(x1, [fmin, fmax], m=N, fs=fs)
+X2 = zoom_fft(x2, [fmin, fmax], m=N, fs=fs)
+
+H1y_est = Y / X1
+H2y_est = Y / X2
+
+f_est = np.linspace(fmin, fmax, N)
+
+# ------------------------------------------------------------------------------
+
+# Plotting
+fig = plt.figure()
+
+ax1 = fig.add_subplot(2,2,1)
+ax2 = fig.add_subplot(2,2,3)
+ax3 = fig.add_subplot(2,2,2)
+ax4 = fig.add_subplot(2,2,4)
+
+
+ax1.set_title(r'$Y / X_{1}$ Magnitude')
+ax1.semilogx(f, 20 * np.log10(abs(H1y)), label='Analytical')
+ax1.semilogx(f_est, 20 * np.log10(abs(H1y_est)), label='Estimated')
+
+ax2.set_title(r'$Y / X_{1}$ Phase')
+ax2.semilogx(f, np.rad2deg(np.angle(H1y)), label='Analytical')
+ax2.semilogx(f_est, np.rad2deg(np.angle(H1y_est)), label='Estimated')
+
+ax3.set_title(r'$Y / X_{2}$ Magnitude')
+ax3.semilogx(f, 20 * np.log10(abs(H2y)), label='Analytical')
+ax3.semilogx(f_est, 20 * np.log10(abs(H2y_est)), label='Estimated')
+
+ax4.set_title(r'$Y / X_{2}$ Phase')
+ax4.semilogx(f, np.rad2deg(np.angle(H2y)), label='Analytical')
+ax4.semilogx(f_est, np.rad2deg(np.angle(H2y_est)), label='Estimated')
+
+ax1.set_ylabel('Magnitude [dB]')
+ax2.set_xlabel('Frequency [Hz]')
+ax2.set_ylabel('Phase [deg]')
+ax4.set_xlabel('Frequency [Hz]')
+
+ax1.legend()
+ax2.legend()
+ax3.legend()
+ax4.legend()
+
+plt.show()
+```
+
+{{< /collapse >}}
+
+Woah okay that's not great...
+
+The noise is expected due to what our inputs are and how the Fourier transform and frequency response is computed, but the magnitude of both our calculated frequency responses is definitely much higher than it should be. 
+
+What's going on here? As a hint of where this is going, it has to do with our two inputs being partially
+correlated. In this case that means that \\( x_{2} \\) is partially made up of \\( x_{1} \\).
+
+
+## What is this all about?
+
+A frequency response gives information about how an output of a system will react to a sinusoidal input at different frequencies. They are very useful in analysing the stability and behaviour of systems. They are also central to frequency-domain system identification methods, which is what we will be interested in using them for. 
+
+As we already said, for some system input \\( x(t) \\) and output \\( y(t) \\), the frequency response is
+
+$$
+    H(f) = \frac{Y(f)}{X(f)}
+$$
+
+**But this is not always entirely true**. In systems where there are *multiple partially correlated inputs* and those inputs all affect the output, we have to be more careful about how we calculate these frequency responses. In other words, we have to *condition* the frequency responses to remove the effects that 
+come from this correlation.
+
+Throughout this post, we will develop a very useful way to calculate frequency responses (especially for system identification) using spectral density functions. Then, we will apply this method in single-input single-output (SISO) systems. We will build up some theory on how to describe these correlation effects in multiple-input single-output (MISO) systems and see why the above equation for frequency responses is lacking. Finally, we will discuss how to change our method to *condition* these frequency responses so 
+they are correct.
 
 
 ## Stationary Random Processes
@@ -202,9 +361,9 @@ To do this we will turn to some statistical methods and see where they can take 
 
 ### Basics
 
-First, let's look at the concept of a stationary random process. A random process meaning some function whose value at any given time is random. Each time index can be described by a random variable. This is good as our measurement noise can be modelled by these random variables. The random process is stationary if the probability density function at any time is the same. 
+First, let's look at the concept of a stationary random process. A random process meaning some function whose value at any given time is random. Each time index can be described by a random variable. This is good as our measurement noise can be modelled by these random variables. The random process is *stationary* if the probability density function of the random variable at any time is the same.
 
-Let's look at an example to help. In **Figure 2**, we are using random normal noise as our random variable at each time \\( t_{i} \\) to generate a 'sample function', \\( x_{1}(t) \\), of the random process. 
+Let's look at an example to help. In **Figure 2**, we are using random normal noise as our random variable at each time \\( t_{i} \\) to generate a '*sample function*', \\( x_{1}(t) \\), of the random process. 
 
 If we do this multiple times to create lots of sample functions \\( x_{k}(t), k = 1, 2, ... \\), we can then estimate the probability density function of the random variable at a particular time \\( t_{i} \\). For example, if we focus on time \\( t = 0 \\), we could estimate the probability density function \\( f_{X}(x) \\) by counting how many sample functions had a value \\( x_{k}(0) \\) within certain ranges. Eg. how many had a value between 0 and 0.5? Between 0.5 and 1? Between -2 and -1.5?
 
@@ -429,7 +588,7 @@ $$
     E\\{x(t) x(t + \tau) \\}
 $$
 
-where \\( \tau \\) here is acting as a time offset. Now we know that since this is a stationary random process, the probabilty densit function is time independant, so the only variable in this new function is \\( \tau \\).
+where \\( \tau \\) here is acting as a time offset. Now we know that since this is a stationary random process, the probabilty density function is time independant, so the only variable in this new function is \\( \tau \\). 
 
 Let's name this new function the *correlation function*, for reasons we should see soon. 
 
@@ -539,7 +698,7 @@ $$
 
 which we would call the cross-correlation function. This can be interpreted as telling us about whether a future value of \\( y(t) \\) can be predicted from the current value of \\( x(t) \\).
 
-While it may not seem like it yet, these correlation functions form the basis for the method we will use to derive our transfer functions. But we need to derive one more function before we get there.
+While it may not seem like it yet, these correlation functions form the basis for the method we will use to derive our frequency responses. But we need to derive one more function before we get there.
 
 ### Spectral Density Functions
 
@@ -704,9 +863,9 @@ $$
 Let's now write out fully what \\( S_{xy}(f, T, k) \\) looks like.
 
 $$
-    S_{xy}(f, T, k) = \int_{0}^{T}{x_{k}(\alpha) e^{-j 2 \pi f \alpha}}d\alpha \int_{0}^{T}{y_{k}(\beta) e^{-j 2 \pi f \beta}}d\beta
+    S_{xy}(f, T, k) = \frac{1}{T} \int_{0}^{T}{x_{k}(\alpha) e^{-j 2 \pi f \alpha}}d\alpha \int_{0}^{T}{y_{k}(\beta) e^{-j 2 \pi f \beta}}d\beta
 $$
-
+ 
 Instead of \\( t \\) we will use \\( \alpha \\) and \\( \beta \\) to help make it clear which variables are in which integral.
 
 $$
@@ -935,7 +1094,7 @@ $$
     R_{xy}(\tau) = \int_{0}^{\infty} h(\alpha) R_{xx}(\tau - \alpha) d\alpha
 $$
 
-Now we have the same form of convolution integbral just in terms of correlation functions instead of our stationary random processes. So we can transform this into the Fourier domain to change the convolution integral into a multiplication.
+Now we have the same form of convolution integral just in terms of correlation functions instead of our stationary random processes. So we can transform this into the Fourier domain to change the convolution integral into a multiplication.
 
 $$
     S_{xy}(f) = H(f) S_{xx}(f)
@@ -952,13 +1111,13 @@ $$
 
 ### Theory on Partially Correlated Inputs
 
-To be able to what happens when we have correlated inputs, we first need to think about what a system with correlated inputs would look like. To do this, we will make use of some helpful system diagrams.
+To be able to understand what happens when we have correlated inputs, we first need to think about what a system with correlated inputs would look like. To do this, we will make use of some helpful system diagrams.
 
-**Figure 8** shows a diagram of a single input single output system as a reference.
+**Figure 8** shows a diagram of a single-input, single-output system as a reference. 
 
 {{< figure src="../img/siso-system-diagram.png" align=center caption="**Figure 8**: Single input single output system diagram." >}}
 
-If we have two inputs, \\( x_{1} \\) and \\( x_{2} \\), if they are correlated, we could think of \\( x_{2} \\) as being made up of an uncorrelated part, \\( x_{2_{UC}} \\) and a part that is correlated with \\( x_{1} \\) which we can call \\( x_{2_{C}} \\).
+If we have two inputs \\( x_{1} \\) and \\( x_{2} \\), and if they are correlated, we could think of \\( x_{2} \\) as being made up of an uncorrelated part, \\( x_{2_{UC}} \\) and a part that is correlated with \\( x_{1} \\) which we can call \\( x_{2_{C}} \\). 
 
 We can think of this correlated part as being a linear transformation of \\( x_{1} \\), which we can represent by a transfer function \\( L_{12}(f) \\). Note that often these correlation effects will be non-linear so we will use the notation \\( L_{12}(f) \\) to represent the transfer function with the optimum linear effects between the input \\( x_{1} \\) and output \\( x_{2_{C}} \\).
 
@@ -1079,7 +1238,15 @@ $$
     \end{bmatrix}
 $$
 
-This idea can be extended to an arbitrary number of inputs.
+This finally gives us our conditioned frequency responses. We can also extend this idea to an arbitrary number of inputs.
+
+## An example, revisited
+
+Let's go back to the example we started this all with and take a closer look at how the system was
+defined. 
+
+***TO BE CONTINUED***
+
 
 ## References
 
@@ -1088,3 +1255,5 @@ This idea can be extended to an arbitrary number of inputs.
 [2] Bendat, Julius S., and Allan G. Piersol. Random data: analysis and measurement procedures. John Wiley & Sons, 2011.
 
 [3] Tischler, Mark B., and Robert K. Remple. Aircraft and rotorcraft system identification. Reston, VA: American Institute of Aeronautics and Astronautics, 2012.
+
+[4] Otnes, Robert K. "Digital time series analysis." John Wiley & Sons, (1972).
