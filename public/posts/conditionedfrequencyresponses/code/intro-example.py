@@ -102,7 +102,9 @@ ax4.set_title(r'$Y / X_{2}$ Phase')
 ax4.semilogx(f, np.rad2deg(np.angle(H2y)), label='Analytical')
 ax4.semilogx(f_est, np.rad2deg(np.angle(H2y_est)), label='Estimated')
 
+ax1.set_ylabel('Magnitude [dB]')
 ax2.set_xlabel('Frequency [Hz]')
+ax2.set_ylabel('Phase [deg]')
 ax4.set_xlabel('Frequency [Hz]')
 
 ax1.legend()

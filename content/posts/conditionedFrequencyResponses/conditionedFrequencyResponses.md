@@ -1123,7 +1123,7 @@ We can think of this correlated part as being a linear transformation of \\( x_{
 
 **Figure 9** shows this idea in a diagram.
 
-{{< figure src="../img/miso-system-diagram.png" align=center caption="**Figure 8**: Two-input single-output system diagram with partially correlated inputs." >}}
+{{< figure src="../img/miso-system-diagram.png" align=center caption="**Figure 9**: Two-input single-output system diagram with partially correlated inputs." >}}
 
 Now, if we wanted to find the frequency response between \\( x_{1} \\) and \\( y \\), we would think to calculate
 
@@ -1242,10 +1242,49 @@ This finally gives us our conditioned frequency responses. We can also extend th
 
 ## An example, revisited
 
-Let's go back to the example we started this all with and take a closer look at how the system was
-defined. 
+Let's go back to the example we started this all with and take a closer look at 
+how the system was defined. We said our system looked like 
 
-***TO BE CONTINUED***
+$$
+    \ddot{y}(t) + c \dot{y}(t) + k y(t) = a x_{1}(t) + b x_{2}(t)
+$$
+
+Taking the Laplace transform of this gives
+
+$$
+    (s^{2} + c s + k) Y(s) = a X_{1}(s) + b X_{2}(s)
+$$
+Our original calculation for the frequency response of \\( y \\) to \\( x_{1} \\) is then
+
+$$
+\begin{aligned}
+    \frac{Y(s)}{X_{1}(s)} &= \frac{a}{s^{2} + c s + k}
+    &+ \frac{b}{s^{2} + c s + k} && \frac{X_{2}(s)}{X_{1}(s)} \\\
+    &= H_{1y}(s) &+ H_{2y}(s) && L_{12}(s)
+\end{aligned}
+$$
+
+and similarly
+
+$$
+\begin{aligned}
+        \frac{Y(s)}{X_{2}(s)} &= \frac{a}{s^{2} + c s + k} && \frac{X_{1}(s)}{X_{2}(s)}
+    &+ \frac{b}{s^{2} + c s + k} \\\
+    &= H_{1y}(s) && L_{21}(s) &+ H_{2y}(s)
+\end{aligned}
+$$
+
+From these equations we can see the analytical transfer functions along with 
+the extra cross-control terms introduced by the partial correlation.
+
+We now have the understanding to be able to calculate the MISO 
+conditioned frequency responses, as we can see in **Figure 10**.
+
+{{< figure src="../img/example-revisited.png" align=center caption="**Figure 10**: Plotting different ways of calculating the frequency response, using SISO and MISO assumptions." >}}
+
+These conditioned frequency responses now match the analytical ones closely. The 
+differences to the analytical result is now just due to the fact that the spectral density functions 
+used to calculate the frequecy responses are estimates. There are ways to improve these spectral density estimates, such as using Welch's method. But for now, this hopefully shows why conditioning frequency responses can be a crucial step in certain situations.
 
 
 ## References
